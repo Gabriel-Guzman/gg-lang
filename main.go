@@ -2,6 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/gabriel-guzman/gg-lang/src"
+	"github.com/gabriel-guzman/gg-lang/src/godTree"
+	"github.com/gabriel-guzman/gg-lang/src/operators"
+	"github.com/gabriel-guzman/gg-lang/src/tokenizer"
+	"github.com/gabriel-guzman/gg-lang/src/variables"
 	"os"
 )
 
@@ -19,27 +24,28 @@ func main() {
 		panic(err)
 	}
 
-	tokens, err := BuildTokens([]rune(string(out)))
+	tokens, err := tokenizer.BuildTokens([]rune(string(out)))
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("BuildTokens output: \n%v\n", tokens)
 
-	ast, err := newAST(tokens)
+	ast, err := godTree.NewAST()
+	err = ast.ExecStmts(tokens)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("AST: \n%v\n", ast.String())
+	fmt.Printf("AST: %v\n", ast.String())
 
-	sess := &session{variables: make(map[string]variable), omap: defaultOpMap()}
-	err = sess.run(ast)
+	sess := &src.Session{Variables: make(map[string]variables.Variable), Omap: operators.DefaultOpMap()}
+	err = sess.Run(ast)
 	if err != nil {
 		fmt.Println("Error running session:", err)
 		return
 	}
 
 	fmt.Println("Final variables:")
-	for k, v := range sess.variables {
-		fmt.Printf("%s = %v\n", k, v.value)
+	for k, v := range sess.Variables {
+		fmt.Printf("%s = %v\n", k, v.Value)
 	}
 }

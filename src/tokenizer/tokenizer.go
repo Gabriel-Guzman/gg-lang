@@ -1,21 +1,39 @@
-package main
+//go:generate stringer -type=token
+package tokenizer
 
 import (
 	"fmt"
+	"github.com/gabriel-guzman/gg-lang/src/iterator"
 	"unicode"
 )
 
+type tokenType int
+
+const (
+	VAR tokenType = iota
+	OPERATOR
+	NUMBER_LITERAL
+	STRING_LITERAL
+)
+
+type Token struct {
+	Start     int
+	end       int
+	Str       string
+	TokenType tokenType
+}
+
 type tokenizer struct {
-	stmts [][]token
+	stmts [][]Token
 
 	_ctr     int
-	_line    []token
+	_line    []Token
 	_curWord []rune
 
 	_curWordRole tokenType
 }
 
-func BuildTokens(ins []rune) ([][]token, error) {
+func BuildTokens(ins []rune) ([][]Token, error) {
 	toke := &tokenizer{}
 	err := toke.fromRunes(ins)
 
@@ -28,7 +46,7 @@ func (t *tokenizer) fromRunes(ins []rune) error {
 
 	t._curWord = make([]rune, 0)
 
-	runeIter := newIter[rune](ins)
+	runeIter := iterator.NewIter[rune](ins)
 	for {
 		r, ok := runeIter.Next()
 		if !ok {
@@ -92,11 +110,11 @@ func (t *tokenizer) wordDone() {
 		return
 	}
 
-	t._line = append(t._line, token{
-		start:     t._ctr - len(t._curWord),
+	t._line = append(t._line, Token{
+		Start:     t._ctr - len(t._curWord),
 		end:       t._ctr,
-		str:       string(t._curWord),
-		tokenType: t._curWordRole,
+		Str:       string(t._curWord),
+		TokenType: t._curWordRole,
 	})
 	t._curWord = nil
 }

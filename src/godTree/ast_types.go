@@ -1,12 +1,12 @@
-package main
+package godTree
 
-type expressionKind int
+type ExpressionKind int
 
 const (
 	/*
 		valueExpression implementing types
 	*/
-	ExprBinary expressionKind = iota
+	ExprBinary ExpressionKind = iota
 	ExprNumberLiteral
 	ExprVariable
 	ExprStringLiteral
@@ -18,11 +18,11 @@ const (
 	ExprAssignment
 )
 
-type expression interface {
-	kind() expressionKind
+type Expression interface {
+	Kind() ExpressionKind
 }
 
-type valueExpression interface {
-	name() string
-	kind() expressionKind
+type ValueExpression interface {
+	Name() string
+	Kind() ExpressionKind
 }
