@@ -7,6 +7,7 @@ import (
 
 type session struct {
 	variables map[string]variable
+	omap      *opmap
 }
 
 func (s *session) run(ast *ast) error {
@@ -14,7 +15,7 @@ func (s *session) run(ast *ast) error {
 		switch expr.kind() {
 		case ExprAssignment:
 			if err := s.evaluateAssignment(expr.(*assignmentExpression)); err != nil {
-				return fmt.Errorf("expr %d: %v", i, err)
+				return &runtimeError{fmt.Sprintf("expr %d: %v", i, err)}
 			}
 		}
 	}
@@ -24,19 +25,19 @@ func (s *session) run(ast *ast) error {
 
 func (s *session) evaluateAssignment(expr *assignmentExpression) error {
 	switch expr.target.kind() {
-	case ExprIdentifier:
+	case ExprVariable:
 	default:
-		return fmt.Errorf("invalid assignment target: %s", expr.target.raw)
+		return &runtimeError{fmt.Sprintf("invalid assignment target: %s", expr.target.raw)}
 	}
 
 	newVar := variable{name: expr.target.raw}
 
-	switch expr.value.kind() {
-	case ExprAssignment:
-		return fmt.Errorf("one assignment per statement")
+	if expr.value.kind() > SentinelValueExpression {
+
+		return fmt.Errorf("cannot make value for %s", exprString(expr))
 	}
 
-	val, typ, err := s.toValueExpectExpr(expr.value)
+	val, typ, err := s.evaluateValueExpr(expr.value)
 	if err != nil {
 		return err
 	}
@@ -48,72 +49,48 @@ func (s *session) evaluateAssignment(expr *assignmentExpression) error {
 	return nil
 }
 
-func (s *session) evaluateBinary(expr *binaryExpression) (int, varType, error) {
-	left, ltyp, err := s.toValueExpectIdent(expr.lhs.(*identifier))
-	if err != nil {
-		return 0, 0, err
-	}
-
-	right, rtyp, err := s.toValueExpectExpr(expr.rhs)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	if ltyp != INTEGER || rtyp != INTEGER {
-		return 0, 0, fmt.Errorf("invalid types for binary operation: %v %v", left, right)
-	}
-
-	if len(expr.operator.str) != 1 {
-		return 0, 0, fmt.Errorf("invalid operator length: %s", expr.operator.str)
-	}
-
-	asRune := []rune(expr.operator.str)[0]
-
-	switch asRune {
-	case R_PLUS:
-		return left.(int) + right.(int), INTEGER, nil
-	case R_MINUS:
-		return left.(int) - right.(int), INTEGER, nil
-	case R_MUL:
-		return left.(int) * right.(int), INTEGER, nil
-	case R_DIV:
-		return left.(int) / right.(int), INTEGER, nil
-	default:
-		return 0, 0, fmt.Errorf("invalid operator: %s", string(asRune))
-	}
-}
-
-func (s *session) toValueExpectExpr(expr expression) (interface{}, varType, error) {
+func (s *session) evaluateValueExpr(expr valueExpression) (interface{}, varType, error) {
 	switch expr.kind() {
-	case ExprIdentifier:
-		return s.toValueExpectIdent(expr.(*identifier))
+	case ExprVariable:
+		name := expr.(*identifier).name()
+		if val, ok := s.variables[name]; ok {
+			return val.value, val.typ, nil
+		}
+		return nil, 0, fmt.Errorf("undefined variable: %s", name)
 	case ExprNumberLiteral:
-		return s.toValueExpectIdent(expr.(*numberLiteral))
+		name := expr.(*identifier).name()
+		intVal, err := strconv.Atoi(name)
+		if err != nil {
+			return err, 0, err
+		}
+		return intVal, INTEGER, nil
+	case ExprStringLiteral:
+		return expr.(*identifier).name(), STRING, nil
 	case ExprBinary:
-		return s.evaluateBinary(expr.(*binaryExpression))
+		return s.evaluateBinaryExpr(expr.(*binaryExpression))
 	default:
 		return nil, 0, fmt.Errorf("invalid expression type: %v", expr)
 	}
 }
 
-func (s *session) toValueExpectIdent(ident valueExpression) (interface{}, varType, error) {
-	name := ident.name()
-
-	switch ident.kind() {
-	case ExprNumberLiteral:
-		intVal, err := strconv.Atoi(name)
-		if err != nil {
-			return err, 0, err
-		}
-
-		return intVal, INTEGER, nil
-	case ExprIdentifier:
-		if val, ok := s.variables[name]; ok {
-			return val.value, val.typ, nil
-		} else {
-			return nil, 0, fmt.Errorf("undefined variable: %s", name)
-		}
-	default:
-		return nil, 0, fmt.Errorf("invalid value type: %v", ident)
+func (s *session) evaluateBinaryExpr(expr *binaryExpression) (interface{}, varType, error) {
+	left, ltyp, err := s.evaluateValueExpr(expr.lhs)
+	if err != nil {
+		return nil, 0, err
 	}
+
+	right, rtyp, err := s.evaluateValueExpr(expr.rhs)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	op, exists := s.omap.get(expr.op, ltyp, rtyp)
+	if !exists {
+		return nil, 0, fmt.Errorf("op %s not supported between types %v and %v", expr.op, ltyp, rtyp)
+	}
+
+	value := op.evaluate(left, right)
+	resultType := op.resultType()
+
+	return value, resultType, nil
 }

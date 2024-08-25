@@ -19,24 +19,27 @@ func main() {
 		panic(err)
 	}
 
-	inter, err := TokenizeRunes([]rune(string(out)))
+	tokens, err := BuildTokens([]rune(string(out)))
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("TokenizeRunes output: \n%v\n", inter)
+	fmt.Printf("BuildTokens output: \n%v\n", tokens)
 
-	ast, err := fromTokens(inter)
+	ast, err := newAST(tokens)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("AST: \n%v\n", ast.String())
 
-	sess := &session{variables: make(map[string]variable)}
+	sess := &session{variables: make(map[string]variable), omap: defaultOpMap()}
 	err = sess.run(ast)
 	if err != nil {
 		fmt.Println("Error running session:", err)
 		return
 	}
 
-	fmt.Println("Final variables:", sess.variables)
+	fmt.Println("Final variables:")
+	for k, v := range sess.variables {
+		fmt.Printf("%s = %v\n", k, v.value)
+	}
 }

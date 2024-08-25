@@ -10,25 +10,6 @@ type ast struct {
 	body []expression
 }
 
-func exprString(e expression) string {
-	switch e.kind() {
-	case ExprAssignment:
-		val := e.(*assignmentExpression)
-
-		return fmt.Sprintf(`assign of (%v) to (%v)`, exprString(val.value), val.target)
-	case ExprBinary:
-		val := e.(*binaryExpression)
-		return fmt.Sprintf(`operate (%v) (%v) (%v)`, exprString(val.lhs), val.operator.str, exprString(val.rhs))
-
-	case ExprNumberLiteral:
-		return e.(*numberLiteral).raw
-	case ExprIdentifier:
-		return e.(*identifier).raw
-	default:
-		panic(fmt.Sprintf("unknown expression type: %T", e))
-	}
-}
-
 func (a *ast) String() string {
 	var sb strings.Builder
 	for _, expr := range a.body {
@@ -38,11 +19,11 @@ func (a *ast) String() string {
 	return sb.String()
 }
 
-func fromTokens(toks [][]word) (*ast, error) {
+func newAST(toks [][]token) (*ast, error) {
 	a := &ast{}
 	for _, stmt := range toks {
-		witer := newWordIter(stmt)
-		expr, err := parseStmt(witer)
+		tokIter := newIter(stmt)
+		expr, err := parseStmt(tokIter)
 		if err != nil {
 			return nil, err
 		}
@@ -53,25 +34,28 @@ func fromTokens(toks [][]word) (*ast, error) {
 	return a, nil
 }
 
-func parseStmt(witer *wordIter) (expression, error) {
-	curr, exists := witer.Next()
+func parseStmt(tokIter *iter[token]) (expression, error) {
+	curr, exists := tokIter.Next()
 	if !exists {
 		return nil, errors.New("expected a statement")
 	}
-	switch curr.role {
+	switch curr.tokenType {
 	case VAR:
 		// var decl
-		_, exists := witer.Next()
+		_, exists := tokIter.Next()
 		if !exists {
 			return nil, fmt.Errorf("solo expressions are not allowed: %s", curr.str)
 		}
 
-		expr, err := parseValueExpr(witer)
+		expr, err := parseValueExpr(tokIter)
 		if err != nil {
 			return nil, err
 		}
 
-		id := newIdentifier(curr)
+		id, err := newIdentifier(curr)
+		if err != nil {
+			return nil, err
+		}
 		at := newAssignmentExpression(*id, expr)
 		return at, nil
 	}
@@ -79,44 +63,54 @@ func parseStmt(witer *wordIter) (expression, error) {
 	return nil, errors.New("invalid statement")
 }
 
-func parseValueExpr(witer *wordIter) (expression, error) {
-	curr, exists := witer.Current()
+func parseValueExpr(tokIter *iter[token]) (valueExpression, error) {
+	curr, exists := tokIter.Current()
 	if !exists {
-		return nil, fmt.Errorf("expected a name expression")
+		return nil, fmt.Errorf("expected a value expression")
 	}
 
-	_, exists = witer.Peek()
-	if exists {
-		expectValue := curr
-		lhs, err := valueExprFromWord(expectValue)
-		if err != nil {
-			return nil, err
-		}
-		// if operator, binary expression
-		expectOp, _ := witer.Next()
-		if expectOp.role != OPERATOR {
-			return nil, fmt.Errorf("expected an operator after a name expression, got %s", expectOp.str)
-		}
-
-		witer.Next()
-		rhs, err := parseValueExpr(witer)
-		if err != nil {
-			return nil, err
-		}
-
-		return newBinaryExpression(lhs, expectOp, rhs), nil
+	switch curr.tokenType {
+	case OPERATOR:
+		return nil, fmt.Errorf("unexpected op %s at %d", curr.str, curr.start)
 	}
 
-	return valueExprFromWord(curr)
+	// if this value expression is only one token
+	_, exists = tokIter.Peek()
+	if !exists {
+		return newIdentifier(curr)
+	}
+
+	// if its more than one token, it should be a binary expression
+	lhs, err := newIdentifier(curr)
+	if err != nil {
+		return nil, err
+	}
+
+	expectOp, _ := tokIter.Next()
+	if expectOp.tokenType != OPERATOR {
+		return nil, fmt.Errorf("expected an op after name expression %s, got %s at %d", curr.str, expectOp.str, expectOp.start)
+	}
+
+	tokIter.Next()
+	rhs, err := parseValueExpr(tokIter)
+	if err != nil {
+		return nil, err
+	}
+
+	return newBinaryExpression(lhs, expectOp.str, rhs), nil
 }
 
-func valueExprFromWord(w word) (valueExpression, error) {
-	switch w.role {
+func newIdentifier(t token) (*identifier, error) {
+	var ik idKind
+	switch t.tokenType {
 	case NUMBER_LITERAL:
-		return &numberLiteral{raw: w.str}, nil
+		ik = IdExprNumber
 	case VAR:
-		return &identifier{raw: w.str}, nil
+		ik = IdVariable
+	case STRING_LITERAL:
+		ik = IdExprString
 	default:
-		return nil, fmt.Errorf("invalid name expression: %s", w.str)
+		return nil, fmt.Errorf("invalid value expression %s at %d: ", t.str, t.start)
 	}
+	return &identifier{raw: t.str, idKind: ik}, nil
 }

@@ -3,10 +3,19 @@ package main
 type expressionKind int
 
 const (
+	/*
+		valueExpression implementing types
+	*/
 	ExprBinary expressionKind = iota
-	ExprAssignment
 	ExprNumberLiteral
-	ExprIdentifier
+	ExprVariable
+	ExprStringLiteral
+	SentinelValueExpression
+
+	/*
+	   assignmentExpression implementing types
+	*/
+	ExprAssignment
 )
 
 type expression interface {
