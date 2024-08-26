@@ -1,4 +1,4 @@
-//go:generate stringer -type=token
+//go:generate stringer -type=Token
 package tokenizer
 
 import (
@@ -11,14 +11,14 @@ type tokenType int
 
 const (
 	VAR tokenType = iota
-	OPERATOR
-	NUMBER_LITERAL
-	STRING_LITERAL
+	Operator
+	NumberLiteral
+	StringLiteral
 )
 
 type Token struct {
 	Start     int
-	end       int
+	End       int
 	Str       string
 	TokenType tokenType
 }
@@ -26,14 +26,14 @@ type Token struct {
 type tokenizer struct {
 	stmts [][]Token
 
-	_ctr     int
+	_iter    *iterator.Iter[rune]
 	_line    []Token
 	_curWord []rune
 
 	_curWordRole tokenType
 }
 
-func BuildTokens(ins []rune) ([][]Token, error) {
+func BuildStmts(ins []rune) ([][]Token, error) {
 	toke := &tokenizer{}
 	err := toke.fromRunes(ins)
 
@@ -41,14 +41,11 @@ func BuildTokens(ins []rune) ([][]Token, error) {
 }
 
 func (t *tokenizer) fromRunes(ins []rune) error {
-
-	t._ctr = -1
-
 	t._curWord = make([]rune, 0)
+	t._iter = iterator.New[rune](ins)
 
-	runeIter := iterator.NewIter[rune](ins)
 	for {
-		r, ok := runeIter.Next()
+		r, ok := t._iter.Next()
 		if !ok {
 			break
 		}
@@ -61,36 +58,36 @@ func (t *tokenizer) fromRunes(ins []rune) error {
 			t.lineDone()
 		case isReservedRune(r):
 			t.wordDone()
-			t._curWordRole = OPERATOR
+			t._curWordRole = Operator
 			t.addToWord(r)
 			t.wordDone()
 		case unicode.IsLetter(r):
-			if len(t._curWord) != 0 && t._curWordRole == NUMBER_LITERAL {
+			if len(t._curWord) != 0 && t._curWordRole == NumberLiteral {
 				return fmt.Errorf("invalid character %s in number literal %s", string(r), string(t._curWord))
 			}
 			t._curWordRole = VAR
 			t.addToWord(r)
 		case unicode.IsDigit(r):
 			if len(t._curWord) == 0 {
-				t._curWordRole = NUMBER_LITERAL
+				t._curWordRole = NumberLiteral
 			}
 			t.addToWord(r)
 		case r == '"':
 			if len(t._curWord) > 0 {
 				return fmt.Errorf("unexpected character %c", r)
 			}
-			strMember, ok := runeIter.Next()
+			strMember, ok := t._iter.Next()
 
 		stringSearch:
 			for ok {
 				if strMember == '"' {
-					t._curWordRole = STRING_LITERAL
+					t._curWordRole = StringLiteral
 					t.wordDone()
 					break stringSearch
 				}
 
 				t.addToWord(strMember)
-				strMember, ok = runeIter.Next()
+				strMember, ok = t._iter.Next()
 			}
 			if !ok {
 				return fmt.Errorf("unterminated string %s", string(t._curWord))
@@ -111,8 +108,8 @@ func (t *tokenizer) wordDone() {
 	}
 
 	t._line = append(t._line, Token{
-		Start:     t._ctr - len(t._curWord),
-		end:       t._ctr,
+		Start:     t._iter.Index() - len(t._curWord),
+		End:       t._iter.Index(),
 		Str:       string(t._curWord),
 		TokenType: t._curWordRole,
 	})
@@ -130,25 +127,16 @@ func (t *tokenizer) lineDone() {
 type opType string
 
 const (
-	R_PLUS  opType = "+"
-	R_MINUS        = "-"
-	R_MUL          = "*"
-	R_DIV          = "/"
+	RPlus  opType = "+"
+	RMinus        = "-"
+	RMul          = "*"
+	RDiv          = "/"
 )
 
 func isReservedRune(word rune) bool {
 	strWord := opType(word)
-	return strWord == R_PLUS ||
-		strWord == R_MINUS ||
-		strWord == R_MUL ||
-		strWord == R_DIV
+	return strWord == RPlus ||
+		strWord == RMinus ||
+		strWord == RMul ||
+		strWord == RDiv
 }
-
-//func handleSpace(_curWord []rune, _line *[]string) {
-//	wordDone(_curWord, _line)
-//}
-//
-//func (T *tokenizer) handleSemicolon(_curWord []rune, _line *[]string) {
-//	wordDone(_curWord, _line)
-//	_curWord = make([]rune, 0)
-//}

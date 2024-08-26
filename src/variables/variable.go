@@ -1,11 +1,11 @@
-//go:generate stringer -type=varType
+//go:generate stringer -type=VarType
 package variables
 
 type VarType int
 
 const (
-	INTEGER VarType = iota
-	STRING
+	Integer VarType = iota
+	String
 )
 
 type Variable struct {

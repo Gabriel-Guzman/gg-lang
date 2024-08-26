@@ -3,6 +3,7 @@ package godTree
 import (
 	"errors"
 	"fmt"
+	"github.com/gabriel-guzman/gg-lang/src/ggErrs"
 	"github.com/gabriel-guzman/gg-lang/src/iterator"
 	"github.com/gabriel-guzman/gg-lang/src/tokenizer"
 	"strings"
@@ -15,20 +16,19 @@ type Ast struct {
 func (a *Ast) String() string {
 	var sb strings.Builder
 	for _, expr := range a.Body {
-		sb.WriteString(ExprString(expr, 0))
-		sb.WriteString("\n")
+		ExprString(expr, 0, &sb)
 	}
 	return sb.String()
 }
 
-func NewAST() (*Ast, error) {
+func New() *Ast {
 	a := &Ast{}
-	return a, nil
+	return a
 }
 
-func (a *Ast) ExecStmts(tokens [][]tokenizer.Token) error {
+func (a *Ast) ParseStmts(tokens [][]tokenizer.Token) error {
 	for _, stmt := range tokens {
-		tokIter := iterator.NewIter(stmt)
+		tokIter := iterator.New(stmt)
 		expr, err := parseStmt(tokIter)
 		if err != nil {
 			return err
@@ -45,8 +45,8 @@ func parseStmt(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
 		return nil, errors.New("expected a statement")
 	}
 	switch curr.TokenType {
+	// var decl
 	case tokenizer.VAR:
-		// var decl
 		_, exists := tokIter.Next()
 		if !exists {
 			return nil, fmt.Errorf("solo expressions are not allowed: %s", curr.Str)
@@ -61,22 +61,23 @@ func parseStmt(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		at := newAssignmentExpression(*id, expr)
 		return at, nil
 	}
 
-	return nil, errors.New("invalid statement")
+	return nil, ggErrs.NewRuntime("invalid statement")
 }
 
 func parseValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (ValueExpression, error) {
 	curr, exists := tokIter.Current()
 	if !exists {
-		return nil, fmt.Errorf("expected a value expression")
+		return nil, ggErrs.NewRuntime("expected a value expression")
 	}
 
 	switch curr.TokenType {
-	case tokenizer.OPERATOR:
-		return nil, fmt.Errorf("unexpected op %s at %d", curr.Str, curr.Start)
+	case tokenizer.Operator:
+		return nil, ggErrs.NewRuntime("unexpected op %s at %d", curr.Str, curr.Start)
 	}
 
 	// if this value expression is only one token
@@ -92,11 +93,14 @@ func parseValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (ValueExpression, e
 	}
 
 	expectOp, _ := tokIter.Next()
-	if expectOp.TokenType != tokenizer.OPERATOR {
-		return nil, fmt.Errorf("expected an op after name expression %s, got %s at %d", curr.Str, expectOp.Str, expectOp.Start)
+	if expectOp.TokenType != tokenizer.Operator {
+		return nil, ggErrs.NewRuntime("expected an op after name expression %s, got %s at %d", curr.Str, expectOp.Str, expectOp.Start)
 	}
 
-	tokIter.Next()
+	_, exists = tokIter.Next()
+	if !exists {
+		return nil, ggErrs.NewRuntime("expected a value expression after op")
+	}
 	rhs, err := parseValueExpr(tokIter)
 	if err != nil {
 		return nil, err
@@ -106,16 +110,16 @@ func parseValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (ValueExpression, e
 }
 
 func newIdentifier(t tokenizer.Token) (*Identifier, error) {
-	var ik idKind
+	var ik IdExprKind
 	switch t.TokenType {
-	case tokenizer.NUMBER_LITERAL:
+	case tokenizer.NumberLiteral:
 		ik = IdExprNumber
 	case tokenizer.VAR:
-		ik = IdVariable
-	case tokenizer.STRING_LITERAL:
+		ik = IdExprVariable
+	case tokenizer.StringLiteral:
 		ik = IdExprString
 	default:
-		return nil, fmt.Errorf("invalid value expression %s at %d: ", t.Str, t.Start)
+		return nil, ggErrs.NewRuntime("invalid identifier %s at %d: ", t.Str, t.Start)
 	}
 	return &Identifier{Raw: t.Str, idKind: ik}, nil
 }

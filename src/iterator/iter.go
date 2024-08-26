@@ -5,8 +5,12 @@ type Iter[T any] struct {
 	curr    int
 }
 
-func NewIter[T any](words []T) *Iter[T] {
+func New[T any](words []T) *Iter[T] {
 	return &Iter[T]{members: words, curr: -1}
+}
+
+func (wi *Iter[T]) Index() int {
+	return wi.curr
 }
 
 func (wi *Iter[T]) Copy() *Iter[T] {
@@ -24,7 +28,7 @@ func (wi *Iter[T]) Current() (T, bool) {
 }
 
 func (wi *Iter[T]) Next() (T, bool) {
-	wi.curr++ // Move to the next token in the slice.
+	wi.curr++
 	if wi.curr >= len(wi.members) {
 		var ret T
 		return ret, false

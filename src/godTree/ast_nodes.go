@@ -1,19 +1,23 @@
+//go:generate stringer -type=IdExprKind
 package godTree
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // utility to prevent wrong assignments
-type idKind int
+type IdExprKind int
 
 const (
-	IdExprNumber = idKind(ExprNumberLiteral)
-	IdExprString = idKind(ExprStringLiteral)
-	IdVariable   = idKind(ExprVariable)
+	IdExprNumber   = IdExprKind(ExprNumberLiteral)
+	IdExprString   = IdExprKind(ExprStringLiteral)
+	IdExprVariable = IdExprKind(ExprVariable)
 )
 
 type Identifier struct {
 	Raw    string
-	idKind idKind
+	idKind IdExprKind
 }
 
 func (id *Identifier) Name() string {
@@ -54,27 +58,35 @@ func newAssignmentExpression(target Identifier, value ValueExpression) *Assignme
 }
 
 func ind(count int) string {
-
 	var spaces []rune
-	spaces = append(spaces, '\n')
-	for i := 0; i < count*2; i++ {
+	for i := 0; i < count*4; i++ {
 		spaces = append(spaces, ' ')
 	}
 
-	//var outRunes []rune
-	//outRunes = append(outRunes, spaces...)
-	//outRunes = append(outRunes, []rune(in)...)
 	return string(spaces)
 }
 
-func ExprString(e Expression, depth int) string {
+func ExprString(e Expression, d int, sb *strings.Builder) {
+	w := func(s string) {
+		sb.WriteString(ind(d) + s)
+	}
+	sb.WriteString("\n")
 	switch e.Kind() {
 	case ExprAssignment:
 		val := e.(*AssignmentExpression)
-		return fmt.Sprintf(ind(depth)+"assign of %v to %v", ExprString(val.Value, depth+1), val.Target)
+
+		w("assign of ")
+		ExprString(val.Value, d+1, sb)
+		sb.WriteString("\n")
+		w(" to")
+		ExprString(&val.Target, d+1, sb)
 	case ExprBinary:
 		val := e.(*BinaryExpression)
-		return fmt.Sprintf(ind(depth)+"operate %v %v %v", ExprString(val.Lhs, depth+1), val.Op, ExprString(val.Rhs, depth+1))
+		w("operation of ")
+		ExprString(val.Lhs, d+1, sb)
+		sb.WriteString("\n")
+		w(val.Op)
+		ExprString(val.Rhs, d+1, sb)
 	case ExprNumberLiteral:
 		goto IdentifierStr
 	case ExprVariable:
@@ -84,7 +96,9 @@ func ExprString(e Expression, depth int) string {
 	default:
 		panic(fmt.Sprintf("unknown expression type: %T", e))
 	}
+	return
 
 IdentifierStr:
-	return fmt.Sprintf(ind(depth)+"Ident: %s", e.(*Identifier).Raw)
+	id := e.(*Identifier)
+	w("Ident " + id.idKind.String() + " " + id.Raw)
 }

@@ -10,5 +10,5 @@ func (p *plusStrings) Evaluate(left, right interface{}) interface{} {
 }
 
 func (p *plusStrings) ResultType() variables.VarType {
-	return variables.STRING
+	return variables.String
 }

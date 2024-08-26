@@ -3,6 +3,7 @@ package operators
 import (
 	"fmt"
 	"github.com/gabriel-guzman/gg-lang/src/variables"
+	"strings"
 )
 
 type Operator interface {
@@ -10,7 +11,7 @@ type Operator interface {
 	ResultType() variables.VarType
 }
 
-type Opmap struct {
+type OpMap struct {
 	ops map[string]Operator
 }
 
@@ -18,34 +19,42 @@ func opKey(name string, left, right variables.VarType) string {
 	return fmt.Sprintf("%s_%d_%d", name, left, right)
 }
 
-func (o *Opmap) Get(name string, left, right variables.VarType) (Operator, bool) {
+func (o *OpMap) Get(name string, left, right variables.VarType) (Operator, bool) {
 	op, ok := o.ops[opKey(name, left, right)]
 	return op, ok
 }
 
-func (o *Opmap) set(name string, left, right variables.VarType, op Operator) {
+func (o *OpMap) Set(name string, left, right variables.VarType, op Operator) {
 	o.ops[opKey(name, left, right)] = op
 }
 
-func DefaultOpMap() *Opmap {
-	opm := &Opmap{
+func (o *OpMap) String() string {
+	var sb strings.Builder
+	for key, op := range o.ops {
+		sb.WriteString(fmt.Sprintf("%s: %T\n", key, op))
+	}
+	return sb.String()
+}
+
+func Default() *OpMap {
+	opm := &OpMap{
 		ops: make(map[string]Operator),
 	}
 
 	plus := plusInts{}
-	opm.set("+", variables.INTEGER, variables.INTEGER, &plus)
+	opm.Set("+", variables.Integer, variables.Integer, &plus)
 
 	minus := minusInts{}
-	opm.set("-", variables.INTEGER, variables.INTEGER, &minus)
+	opm.Set("-", variables.Integer, variables.Integer, &minus)
 
 	mul := mulInts{}
-	opm.set("*", variables.INTEGER, variables.INTEGER, &mul)
+	opm.Set("*", variables.Integer, variables.Integer, &mul)
 
 	div := divInts{}
-	opm.set("/", variables.INTEGER, variables.INTEGER, &div)
+	opm.Set("/", variables.Integer, variables.Integer, &div)
 
 	plusStr := plusStrings{}
-	opm.set("+", variables.STRING, variables.STRING, &plusStr)
+	opm.Set("+", variables.String, variables.String, &plusStr)
 
 	return opm
 }

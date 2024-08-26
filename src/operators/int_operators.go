@@ -10,7 +10,7 @@ func (p *plusInts) Evaluate(left, right interface{}) interface{} {
 }
 
 func (p *plusInts) ResultType() variables.VarType {
-	return variables.INTEGER
+	return variables.Integer
 }
 
 // int - int
@@ -21,7 +21,7 @@ func (m *minusInts) Evaluate(left, right interface{}) interface{} {
 }
 
 func (m *minusInts) ResultType() variables.VarType {
-	return variables.INTEGER
+	return variables.Integer
 }
 
 // int * int
@@ -32,7 +32,7 @@ func (m *mulInts) Evaluate(left, right interface{}) interface{} {
 }
 
 func (m *mulInts) ResultType() variables.VarType {
-	return variables.INTEGER
+	return variables.Integer
 }
 
 // int / int
@@ -43,5 +43,5 @@ func (d *divInts) Evaluate(left, right interface{}) interface{} {
 }
 
 func (d *divInts) ResultType() variables.VarType {
-	return variables.INTEGER
+	return variables.Integer
 }
