@@ -17,11 +17,11 @@ type Program struct {
 
 func (p *Program) String() string {
 	var sb strings.Builder
-	sb.WriteString("variables:\n")
+	sb.WriteString("Variables:\n")
 	for k, v := range p.variables {
 		sb.WriteString(fmt.Sprintf("%s: %+v\n", k, v))
 	}
-	sb.WriteString("Operators:\n")
+	sb.WriteString("\nOperators:\n")
 	sb.WriteString(p.opMap.String())
 	return sb.String()
 }
@@ -40,6 +40,8 @@ func (p *Program) Run(ast *godTree.Ast) error {
 			if err := p.evaluateAssignment(expr.(*godTree.AssignmentExpression)); err != nil {
 				return ggErrs.NewRuntime("expr %d: %v", i, err)
 			}
+		default:
+			return ggErrs.NewInternal(nil, "invalid expression kind: %d", expr.Kind())
 		}
 	}
 

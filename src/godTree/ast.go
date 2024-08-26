@@ -44,20 +44,22 @@ func parseStmt(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
 	if !exists {
 		return nil, errors.New("expected a statement")
 	}
+
 	switch curr.TokenType {
-	// var decl
-	case tokenizer.VAR:
+	case tokenizer.Var:
 		_, exists := tokIter.Next()
 		if !exists {
 			return nil, fmt.Errorf("solo expressions are not allowed: %s", curr.Str)
 		}
 
-		expr, err := parseValueExpr(tokIter)
+		// for now, assume if the first word is a non-literal identifier
+		// that it's a variable declaration
+		id, err := newIdentifier(curr)
 		if err != nil {
 			return nil, err
 		}
 
-		id, err := newIdentifier(curr)
+		expr, err := parseValueExpr(tokIter)
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +116,7 @@ func newIdentifier(t tokenizer.Token) (*Identifier, error) {
 	switch t.TokenType {
 	case tokenizer.NumberLiteral:
 		ik = IdExprNumber
-	case tokenizer.VAR:
+	case tokenizer.Var:
 		ik = IdExprVariable
 	case tokenizer.StringLiteral:
 		ik = IdExprString
