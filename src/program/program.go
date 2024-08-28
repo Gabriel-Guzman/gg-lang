@@ -38,10 +38,10 @@ func (p *Program) Run(ast *godTree.Ast) error {
 		switch expr.Kind() {
 		case godTree.ExprAssignment:
 			if err := p.evaluateAssignment(expr.(*godTree.AssignmentExpression)); err != nil {
-				return ggErrs.NewRuntime("expr %d: %v", i, err)
+				return ggErrs.Runtime("expr %d: %v", i, err)
 			}
 		default:
-			return ggErrs.NewInternal(nil, "invalid expression kind: %d", expr.Kind())
+			return ggErrs.Crit("invalid expression kind: %d", expr.Kind())
 		}
 	}
 
@@ -52,13 +52,13 @@ func (p *Program) evaluateAssignment(expr *godTree.AssignmentExpression) error {
 	switch expr.Target.Kind() {
 	case godTree.ExprVariable:
 	default:
-		return ggErrs.NewRuntime(fmt.Sprintf("invalid assignment target: %s", expr.Target.Raw))
+		return ggErrs.Runtime(fmt.Sprintf("invalid assignment target: %s", expr.Target.Raw))
 	}
 
 	newVar := variables.Variable{Name: expr.Target.Raw}
 
 	if expr.Value.Kind() > godTree.SentinelValueExpression {
-		return ggErrs.NewRuntime("cannot make value for %v", expr)
+		return ggErrs.Runtime("cannot make value for %v", expr)
 	}
 
 	val, typ, err := p.evaluateValueExpr(expr.Value)
@@ -81,12 +81,12 @@ func (p *Program) evaluateValueExpr(expr godTree.ValueExpression) (interface{}, 
 		if val, ok := p.variables[name]; ok {
 			return val.Value, val.Typ, nil
 		}
-		return nil, 0, ggErrs.NewRuntime("undefined variable: %s", name)
+		return nil, 0, ggErrs.Runtime("undefined variable: %s", name)
 	case godTree.ExprNumberLiteral:
 		name := expr.(*godTree.Identifier).Name()
 		intVal, err := strconv.Atoi(name)
 		if err != nil {
-			return nil, 0, ggErrs.NewInternal(err, "unable to evaluate number literal: %s", name)
+			return nil, 0, ggErrs.Crit("unable to evaluate number literal: %s", err.Error())
 		}
 		return intVal, variables.Integer, nil
 	case godTree.ExprStringLiteral:
@@ -105,7 +105,7 @@ func (p *Program) evaluateValueExpr(expr godTree.ValueExpression) (interface{}, 
 
 		op, exists := p.opMap.Get(binExp.Op, ltyp, rtyp)
 		if !exists {
-			return nil, 0, ggErrs.NewRuntime("op %s not supported between types %v and %v", binExp.Op, ltyp, rtyp)
+			return nil, 0, ggErrs.Runtime("evaluateValueExpr: op %s not supported between types %v and %v", binExp.Op, ltyp, rtyp)
 		}
 
 		value := op.Evaluate(left, right)
@@ -113,6 +113,6 @@ func (p *Program) evaluateValueExpr(expr godTree.ValueExpression) (interface{}, 
 
 		return value, resultType, nil
 	default:
-		return nil, 0, ggErrs.NewInternal(nil, "invalid expression type: %v", expr)
+		return nil, 0, ggErrs.Crit("evaluateValueExpr: invalid expression type: %v", expr)
 	}
 }

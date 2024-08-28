@@ -1,33 +1,35 @@
 package ggErrs
 
-import "fmt"
+import (
+	"fmt"
+	"runtime"
+)
 
-type Runtime struct {
+type ChillErr struct {
 	Message string
 }
 
-func (err *Runtime) Error() string {
-	return fmt.Sprintf("runtime error: %s", err.Message)
+func (err *ChillErr) Error() string {
+	return fmt.Sprintf("ChillErr: %s", err.Message)
 }
 
-func NewRuntime(msg string, args ...interface{}) *Runtime {
-	return &Runtime{Message: fmt.Sprintf(msg, args...)}
+func Runtime(msg string, args ...interface{}) *ChillErr {
+	return &ChillErr{Message: fmt.Sprintf(msg, args...)}
 }
 
-type Internal struct {
-	msg   string
-	error error
+type CritErr struct {
+	msg string
 }
 
-func (err *Internal) Error() string {
-	switch err.error {
-	case nil:
-		return fmt.Sprintf("internal error: %s", err.msg)
-	default:
-		return fmt.Sprintf("internal error: %s (caused by non-gg code: %v)", err.msg, err.error)
+func (err *CritErr) Error() string {
+	return fmt.Sprintf("CritErr: %s", err.msg)
+}
+
+func Crit(msg string, args ...interface{}) *CritErr {
+	pc, file, no, ok := runtime.Caller(1)
+	details := runtime.FuncForPC(pc)
+	if ok && details != nil {
+		return &CritErr{msg: fmt.Sprintf("%s:%d @ %s\n", file, no, details.Name()) + fmt.Sprintf(msg, args...)}
 	}
-}
-
-func NewInternal(err error, msg string, args ...interface{}) *Internal {
-	return &Internal{msg: fmt.Sprintf(msg, args...), error: err}
+	return &CritErr{msg: fmt.Sprintf(msg, args...)}
 }

@@ -1,5 +1,5 @@
 //go:generate stringer -type=tokenType
-package tokenizer
+package tokenizer_old
 
 import (
 	"fmt"

@@ -1,5 +1,10 @@
 package iterator
 
+import (
+	"fmt"
+	"strings"
+)
+
 type Iter[T any] struct {
 	members []T
 	curr    int
@@ -19,12 +24,22 @@ func (wi *Iter[T]) Copy() *Iter[T] {
 	return &Iter[T]{members: newWords, curr: wi.curr}
 }
 
-func (wi *Iter[T]) Current() (T, bool) {
-	if wi.curr < 0 || wi.curr >= len(wi.members) {
-		var ret T
-		return ret, false
+func (wi *Iter[T]) String() string {
+	var out []string
+	for i, w := range wi.members {
+		if i == wi.curr {
+			out = append(out, fmt.Sprintf("[[%v]]", w))
+			continue
+		}
+		out = append(out, fmt.Sprintf("%v", w))
 	}
-	return wi.members[wi.curr], true
+
+	done := strings.Join(out, ", ")
+	return done
+}
+
+func (wi *Iter[T]) Current() T {
+	return wi.members[wi.curr]
 }
 
 func (wi *Iter[T]) Next() (T, bool) {
@@ -36,6 +51,10 @@ func (wi *Iter[T]) Next() (T, bool) {
 
 	w := wi.members[wi.curr]
 	return w, true
+}
+
+func (wi *Iter[T]) HasNext() bool {
+	return (wi.curr + 1) < len(wi.members)
 }
 
 func (wi *Iter[T]) Reset() {

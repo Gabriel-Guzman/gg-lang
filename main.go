@@ -1,11 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/gabriel-guzman/gg-lang/src/ggErrs"
-	"github.com/gabriel-guzman/gg-lang/src/godTree"
-	"github.com/gabriel-guzman/gg-lang/src/program"
 	"github.com/gabriel-guzman/gg-lang/src/tokenizer"
 	"os"
 )
@@ -15,10 +12,10 @@ func handle(err error) {
 		return
 	}
 	switch err.(type) {
-	case *ggErrs.Runtime:
+	case *ggErrs.ChillErr:
 		fmt.Printf("Runtime error: %s\n", err.Error())
-	case *ggErrs.Internal:
-		panic(fmt.Sprintf("Internal error: %s\n", err.Error()))
+	case *ggErrs.CritErr:
+		panic(fmt.Sprintf("Crit error: %s\n", err.Error()))
 	default:
 		panic(fmt.Sprintf("Unknown error (please wrap in ggErrs): %v\n", err))
 	}
@@ -38,25 +35,26 @@ func main() {
 		panic(err)
 	}
 
-	stmts, err := tokenizer.BuildStmts([]rune(string(out)))
+	stmts, err := tokenizer.TokenizeRunes([]rune(string(out)))
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("Parsed %d statements\n", len(stmts))
+	fmt.Printf("stmts: %+v\n", stmts)
 
-	ast := godTree.New()
-	err = ast.ParseStmts(stmts)
-	handle(err)
-
-	sess := program.New()
-	err = sess.Run(ast)
-	handle(err)
-
-	fmt.Printf("Program: \n%v\n", sess.String())
-	tree, err := json.MarshalIndent(ast, "", "    ")
-	handle(err)
-
-	err = os.WriteFile("out/ast.json", tree, 0644)
-	handle(err)
-	fmt.Println("AST saved to out/ast.json")
+	//ast := godTree.New()
+	//err = ast.ParseStmts(stmts)
+	//handle(err)
+	//
+	//sess := program.New()
+	//err = sess.Run(ast)
+	//handle(err)
+	//
+	//fmt.Printf("Program: \n%v\n", sess.String())
+	//tree, err := json.MarshalIndent(ast, "", "    ")
+	//handle(err)
+	//
+	//err = os.WriteFile("out/ast.json", tree, 0644)
+	//handle(err)
+	//fmt.Println("AST saved to out/ast.json")
 }

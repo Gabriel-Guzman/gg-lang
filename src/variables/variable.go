@@ -6,6 +6,7 @@ type VarType int
 const (
 	Integer VarType = iota
 	String
+	Function
 )
 
 type Variable struct {

@@ -3,6 +3,7 @@ package godTree
 
 import (
 	"fmt"
+	"github.com/gabriel-guzman/gg-lang/src/tokenizer"
 	"strings"
 )
 
@@ -20,6 +21,10 @@ type Identifier struct {
 	idKind IdExprKind
 }
 
+func (id *Identifier) MinShape() []tokenizer.TokenType {
+	return []tokenizer.TokenType{tokenizer.IdentifierMask}
+}
+
 func (id *Identifier) Name() string {
 	return id.Raw
 }
@@ -33,8 +38,17 @@ type BinaryExpression struct {
 	Rhs ValueExpression
 }
 
+func (be *BinaryExpression) MinShape() []tokenizer.TokenType {
+	return []tokenizer.TokenType{
+		tokenizer.IdentifierMask,
+		tokenizer.OperatorMask,
+		tokenizer.IdentifierMask,
+	}
+}
+
 func (be *BinaryExpression) Name() string         { return be.Op }
 func (be *BinaryExpression) Kind() ExpressionKind { return ExprBinary }
+
 func newBinaryExpression(lhs ValueExpression, operator string, rhs ValueExpression) *BinaryExpression {
 	return &BinaryExpression{
 		Lhs: lhs,
@@ -43,10 +57,35 @@ func newBinaryExpression(lhs ValueExpression, operator string, rhs ValueExpressi
 	}
 }
 
+// a(b, c)
+type FunctionCallExpression struct {
+	name   string
+	Params []ValueExpression
+}
+
+func (fce *FunctionCallExpression) MinShape() []tokenizer.TokenType {
+	return []tokenizer.TokenType{
+		tokenizer.Var,
+		tokenizer.ROpenParen,
+		tokenizer.IdentifierMask,
+	}
+}
+
+func (fce *FunctionCallExpression) Name() string         { return fce.name }
+func (fce *FunctionCallExpression) Kind() ExpressionKind { return ExprFunctionCall }
+
 // a 32
 type AssignmentExpression struct {
 	Target Identifier
 	Value  ValueExpression
+}
+
+func (ae *AssignmentExpression) MinShape() []tokenizer.TokenType {
+	return []tokenizer.TokenType{
+		tokenizer.Var,
+		tokenizer.RAssign,
+		tokenizer.IdentifierMask,
+	}
 }
 
 func (ae *AssignmentExpression) Kind() ExpressionKind { return ExprAssignment }

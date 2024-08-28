@@ -2,7 +2,6 @@ package godTree
 
 import (
 	"errors"
-	"fmt"
 	"github.com/gabriel-guzman/gg-lang/src/ggErrs"
 	"github.com/gabriel-guzman/gg-lang/src/iterator"
 	"github.com/gabriel-guzman/gg-lang/src/tokenizer"
@@ -45,45 +44,94 @@ func parseStmt(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
 		return nil, errors.New("expected a statement")
 	}
 
-	switch curr.TokenType {
-	case tokenizer.Var:
-		_, exists := tokIter.Next()
-		if !exists {
-			return nil, fmt.Errorf("solo expressions are not allowed: %s", curr.Str)
+	next, ok := tokIter.Peek()
+	nextTokType := next.TokenType
+
+	exprs := []Expression{
+		&Identifier{},
+		&BinaryExpression{},
+		&FunctionCallExpression{},
+		&AssignmentExpression{},
+	}
+	switch {
+	case matchExpr(tokIter, &Identifier{}):
+	case matchExpr(tokIter, &BinaryExpression{}):
+	case matchExpr(tokIter, &FunctionCallExpression{}):
+	case matchExpr(tokIter, &AssignmentExpression{}):
+	}
+	for _, expr := range exprs {
+		if matchExpr(tokIter, expr) {
+			switch expr.(type) {
+			case *Identifier:
+				return nil, ggErrs.Runtime("didnt expect an identifier: %s", tokIter.String())
+			}
 		}
 
-		// for now, assume if the first word is a non-literal identifier
-		// that it's a variable declaration
-		id, err := newIdentifier(curr)
-		if err != nil {
-			return nil, err
-		}
-
-		expr, err := parseValueExpr(tokIter)
-		if err != nil {
-			return nil, err
-		}
-
-		at := newAssignmentExpression(*id, expr)
-		return at, nil
 	}
 
-	return nil, ggErrs.NewRuntime("invalid statement")
+	switch curr.TokenType {
+	case tokenizer.Var:
+		if ok && nextTokType == tokenizer.ROpenParen { // checking nextTokType isnt necessary due to lookup, but its faster
+			// function call
+
+		}
+
+		if ok && nextTokType.IsOperator() {
+
+		}
+
+	}
+
+	return nil, ggErrs.Runtime("invalid statement")
+}
+
+func matchExpr(tokIter *iterator.Iter[tokenizer.Token], expression Expression) bool {
+	iter := tokIter.Copy()
+	ok := true
+	for _, exprMask := range expression.MinShape() {
+		if !ok {
+			return false
+		}
+		tok := iter.Current()
+		if exprMask&tok.TokenType == 0 {
+			return false
+		}
+
+		_, ok = iter.Next()
+	}
+	return true
+}
+
+//func parseFuncCallExpr(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
+//
+//}
+
+func parseAssignmentExpr(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
+	curr := tokIter.Current()
+	id, err := newIdentifier(curr)
+	if err != nil {
+		return nil, err
+	}
+
+	expr, err := parseValueExpr(tokIter)
+	if err != nil {
+		return nil, err
+	}
+
+	at := newAssignmentExpression(*id, expr)
+	return at, nil
 }
 
 func parseValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (ValueExpression, error) {
-	curr, exists := tokIter.Current()
-	if !exists {
-		return nil, ggErrs.NewRuntime("expected a value expression")
-	}
+	curr := tokIter.Current()
 
 	switch curr.TokenType {
 	case tokenizer.Operator:
-		return nil, ggErrs.NewRuntime("unexpected op %s at %d", curr.Str, curr.Start)
+		return nil, ggErrs.Runtime("unexpected op %s at %d", curr.Str, curr.Start)
 	}
 
 	// if this value expression is only one token
-	_, exists = tokIter.Peek()
+	_, exists := tokIter.Peek()
 	if !exists {
 		return newIdentifier(curr)
 	}
@@ -96,12 +144,12 @@ func parseValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (ValueExpression, e
 
 	expectOp, _ := tokIter.Next()
 	if expectOp.TokenType != tokenizer.Operator {
-		return nil, ggErrs.NewRuntime("expected an op after name expression %s, got %s at %d", curr.Str, expectOp.Str, expectOp.Start)
+		return nil, ggErrs.Runtime("expected an op after name expression %s, got %s at %d", curr.Str, expectOp.Str, expectOp.Start)
 	}
 
 	_, exists = tokIter.Next()
 	if !exists {
-		return nil, ggErrs.NewRuntime("expected a value expression after op")
+		return nil, ggErrs.Runtime("expected a value expression after op")
 	}
 	rhs, err := parseValueExpr(tokIter)
 	if err != nil {
@@ -121,7 +169,7 @@ func newIdentifier(t tokenizer.Token) (*Identifier, error) {
 	case tokenizer.StringLiteral:
 		ik = IdExprString
 	default:
-		return nil, ggErrs.NewRuntime("invalid identifier %s at %d: ", t.Str, t.Start)
+		return nil, ggErrs.Runtime("invalid identifier %s at %d: ", t.Str, t.Start)
 	}
 	return &Identifier{Raw: t.Str, idKind: ik}, nil
 }

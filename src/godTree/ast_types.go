@@ -1,5 +1,7 @@
 package godTree
 
+import "github.com/gabriel-guzman/gg-lang/src/tokenizer"
+
 type ExpressionKind int
 
 const (
@@ -10,6 +12,7 @@ const (
 	ExprNumberLiteral
 	ExprVariable
 	ExprStringLiteral
+	ExprFunctionCall
 	SentinelValueExpression
 
 	/*
@@ -20,9 +23,12 @@ const (
 
 type Expression interface {
 	Kind() ExpressionKind
+	MinShape() []tokenizer.TokenType
 }
 
 type ValueExpression interface {
 	Name() string
+	// Expression members
 	Kind() ExpressionKind
+	MinShape() []tokenizer.TokenType
 }
