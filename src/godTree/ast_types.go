@@ -1,6 +1,6 @@
 package godTree
 
-import "github.com/gabriel-guzman/gg-lang/src/tokenizer"
+import "gg-lang/src/tokenizer"
 
 type ExpressionKind int
 

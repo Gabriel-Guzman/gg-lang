@@ -3,7 +3,7 @@ package godTree
 
 import (
 	"fmt"
-	"github.com/gabriel-guzman/gg-lang/src/tokenizer"
+	"gg-lang/src/tokenizer"
 	"strings"
 )
 
@@ -33,9 +33,10 @@ func (id *Identifier) Kind() ExpressionKind { return ExpressionKind(id.idKind) }
 
 // a + b
 type BinaryExpression struct {
-	Lhs ValueExpression
-	Op  string
-	Rhs ValueExpression
+	Lhs  ValueExpression
+	Op   string
+	Rhs  ValueExpression
+	Type ExpressionKind
 }
 
 func (be *BinaryExpression) MinShape() []tokenizer.TokenType {
@@ -59,7 +60,7 @@ func newBinaryExpression(lhs ValueExpression, operator string, rhs ValueExpressi
 
 // a(b, c)
 type FunctionCallExpression struct {
-	name   string
+	Id     *Identifier
 	Params []ValueExpression
 }
 
@@ -71,7 +72,7 @@ func (fce *FunctionCallExpression) MinShape() []tokenizer.TokenType {
 	}
 }
 
-func (fce *FunctionCallExpression) Name() string         { return fce.name }
+func (fce *FunctionCallExpression) Name() string         { return fce.Id.Name() }
 func (fce *FunctionCallExpression) Kind() ExpressionKind { return ExprFunctionCall }
 
 // a 32
@@ -89,9 +90,9 @@ func (ae *AssignmentExpression) MinShape() []tokenizer.TokenType {
 }
 
 func (ae *AssignmentExpression) Kind() ExpressionKind { return ExprAssignment }
-func newAssignmentExpression(target Identifier, value ValueExpression) *AssignmentExpression {
+func newAssignmentExpression(target *Identifier, value ValueExpression) *AssignmentExpression {
 	return &AssignmentExpression{
-		Target: target,
+		Target: *target,
 		Value:  value,
 	}
 }

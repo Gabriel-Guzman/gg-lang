@@ -2,10 +2,10 @@ package program
 
 import (
 	"fmt"
-	"github.com/gabriel-guzman/gg-lang/src/ggErrs"
-	"github.com/gabriel-guzman/gg-lang/src/godTree"
-	"github.com/gabriel-guzman/gg-lang/src/operators"
-	"github.com/gabriel-guzman/gg-lang/src/variables"
+	"gg-lang/src/ggErrs"
+	"gg-lang/src/godTree"
+	"gg-lang/src/operators"
+	"gg-lang/src/variables"
 	"strconv"
 	"strings"
 )
@@ -52,7 +52,7 @@ func (p *Program) evaluateAssignment(expr *godTree.AssignmentExpression) error {
 	switch expr.Target.Kind() {
 	case godTree.ExprVariable:
 	default:
-		return ggErrs.Runtime(fmt.Sprintf("invalid assignment target: %s", expr.Target.Raw))
+		return ggErrs.Runtime("invalid assignment target: %s", expr.Target.Raw)
 	}
 
 	newVar := variables.Variable{Name: expr.Target.Raw}

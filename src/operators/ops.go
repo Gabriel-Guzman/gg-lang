@@ -2,7 +2,7 @@ package operators
 
 import (
 	"fmt"
-	"github.com/gabriel-guzman/gg-lang/src/variables"
+	"gg-lang/src/variables"
 	"strings"
 )
 

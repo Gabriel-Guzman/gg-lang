@@ -1,8 +1,8 @@
 package tokenizer
 
 import (
-	"github.com/gabriel-guzman/gg-lang/src/ggErrs"
-	"github.com/gabriel-guzman/gg-lang/src/iterator"
+	"gg-lang/src/ggErrs"
+	"gg-lang/src/iterator"
 	uni "unicode"
 )
 
@@ -108,6 +108,7 @@ func TokenizeRunes(ins []rune) ([][]Token, error) {
 	curr, ok := iter.Next()
 
 	for ok {
+	sw_stmt:
 		switch {
 		case uni.IsSpace(curr):
 		case isReserved(string(curr)):
@@ -115,13 +116,9 @@ func TokenizeRunes(ins []rune) ([][]Token, error) {
 			if opt == RTerm {
 				stmts = append(stmts, stmt)
 				stmt = nil
+				break sw_stmt
 			}
-			if opt.IsOperator() {
-				stmt = append(stmt, operator(iter, opt))
-			} else if opt.IsContainer() {
-				tok := container(iter, opt)
-				stmt = append(stmt, tok)
-			}
+			stmt = append(stmt, newToken(iter, opt))
 		case uni.IsLetter(curr):
 			stmt = append(stmt, variable(iter))
 		case uni.IsDigit(curr):
@@ -152,18 +149,7 @@ func TokenizeRunes(ins []rune) ([][]Token, error) {
 	return stmts, nil
 }
 
-func container(iter *iterator.Iter[rune], tokenType TokenType) Token {
-	start := iter.Index()
-	opener := Token{
-		Start:     start,
-		End:       iter.Index(),
-		Str:       string(iter.Current()),
-		TokenType: tokenType,
-	}
-	return opener
-}
-
-func operator(iter *iterator.Iter[rune], tokenType TokenType) Token {
+func newToken(iter *iterator.Iter[rune], tokenType TokenType) Token {
 	start := iter.Index()
 	ret := Token{
 		Start:     start,
@@ -195,7 +181,7 @@ func stringLiteral(iter *iterator.Iter[rune]) (Token, error) {
 		TokenType: StringLiteral,
 	}
 
-	iter.Next() // consume the trailing "
+	//iter.Next() // consume the trailing "
 	return ret, nil
 }
 

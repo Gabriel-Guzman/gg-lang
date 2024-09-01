@@ -2,9 +2,9 @@ package godTree
 
 import (
 	"errors"
-	"github.com/gabriel-guzman/gg-lang/src/ggErrs"
-	"github.com/gabriel-guzman/gg-lang/src/iterator"
-	"github.com/gabriel-guzman/gg-lang/src/tokenizer"
+	"gg-lang/src/ggErrs"
+	"gg-lang/src/iterator"
+	"gg-lang/src/tokenizer"
 	"strings"
 )
 
@@ -32,6 +32,9 @@ func (a *Ast) ParseStmts(tokens [][]tokenizer.Token) error {
 		if err != nil {
 			return err
 		}
+		if tokIter.HasNext() {
+			return ggErrs.Runtime("couldnt finish parsing statement\n%s", tokIter.String())
+		}
 
 		a.Body = append(a.Body, expr)
 	}
@@ -39,124 +42,183 @@ func (a *Ast) ParseStmts(tokens [][]tokenizer.Token) error {
 }
 
 func parseStmt(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
+	// move to first token in stmt
 	curr, exists := tokIter.Next()
 	if !exists {
 		return nil, errors.New("expected a statement")
 	}
-
-	next, ok := tokIter.Peek()
-	nextTokType := next.TokenType
-
-	exprs := []Expression{
-		&Identifier{},
-		&BinaryExpression{},
-		&FunctionCallExpression{},
-		&AssignmentExpression{},
-	}
-	switch {
-	case matchExpr(tokIter, &Identifier{}):
-	case matchExpr(tokIter, &BinaryExpression{}):
-	case matchExpr(tokIter, &FunctionCallExpression{}):
-	case matchExpr(tokIter, &AssignmentExpression{}):
-	}
-	for _, expr := range exprs {
-		if matchExpr(tokIter, expr) {
-			switch expr.(type) {
-			case *Identifier:
-				return nil, ggErrs.Runtime("didnt expect an identifier: %s", tokIter.String())
-			}
-		}
-
+	if !curr.TokenType.IsIdentifier() {
+		return nil, ggErrs.Runtime("expected an identifier\n%s", tokIter.String())
 	}
 
-	switch curr.TokenType {
-	case tokenizer.Var:
-		if ok && nextTokType == tokenizer.ROpenParen { // checking nextTokType isnt necessary due to lookup, but its faster
-			// function call
-
-		}
-
-		if ok && nextTokType.IsOperator() {
-
-		}
-
+	if !(curr.TokenType == tokenizer.Var) {
+		return nil, ggErrs.Runtime("expected a variable identifier\n%s", tokIter.String())
 	}
 
-	return nil, ggErrs.Runtime("invalid statement")
-}
-
-func matchExpr(tokIter *iterator.Iter[tokenizer.Token], expression Expression) bool {
-	iter := tokIter.Copy()
-	ok := true
-	for _, exprMask := range expression.MinShape() {
-		if !ok {
-			return false
-		}
-		tok := iter.Current()
-		if exprMask&tok.TokenType == 0 {
-			return false
-		}
-
-		_, ok = iter.Next()
-	}
-	return true
-}
-
-//func parseFuncCallExpr(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
-//
-//}
-
-func parseAssignmentExpr(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
-	curr := tokIter.Current()
 	id, err := newIdentifier(curr)
 	if err != nil {
 		return nil, err
 	}
 
+	next, ok := tokIter.Peek()
+	nextTokType := next.TokenType
+
+	if ok && nextTokType == tokenizer.RAssign {
+		tokIter.Next() // consume the '=' token
+		expr, err := parseAssignmentExpr(id, tokIter)
+		return expr, err
+	}
+
+	// not assign, its value. this could be a lone expression i.e. "swag";
+	tokIter.Reset()
+	expr, err := parseValueExpr(tokIter)
+	return expr, err
+}
+
+func parseAssignmentExpr(id *Identifier, tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
 	expr, err := parseValueExpr(tokIter)
 	if err != nil {
 		return nil, err
 	}
 
-	at := newAssignmentExpression(*id, expr)
+	at := newAssignmentExpression(id, expr)
 	return at, nil
 }
 
 func parseValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (ValueExpression, error) {
-	curr := tokIter.Current()
+	// first word in value
+	curr, exists := tokIter.Next()
 
-	switch curr.TokenType {
-	case tokenizer.Operator:
+	if curr.TokenType.IsOperator() {
 		return nil, ggErrs.Runtime("unexpected op %s at %d", curr.Str, curr.Start)
 	}
 
-	// if this value expression is only one token
-	_, exists := tokIter.Peek()
-	if !exists {
-		return newIdentifier(curr)
-	}
-
-	// if its more than one token, it should be a binary expression
-	lhs, err := newIdentifier(curr)
+	firstId, err := newIdentifier(curr)
 	if err != nil {
 		return nil, err
 	}
 
-	expectOp, _ := tokIter.Next()
-	if expectOp.TokenType != tokenizer.Operator {
-		return nil, ggErrs.Runtime("expected an op after name expression %s, got %s at %d", curr.Str, expectOp.Str, expectOp.Start)
-	}
-
-	_, exists = tokIter.Next()
+	// try for next word
+	token2, exists := tokIter.Next()
 	if !exists {
-		return nil, ggErrs.Runtime("expected a value expression after op")
-	}
-	rhs, err := parseValueExpr(tokIter)
-	if err != nil {
-		return nil, err
+		// no next word, return identifier
+		return firstId, nil
 	}
 
-	return newBinaryExpression(lhs, expectOp.Str, rhs), nil
+	var firstExpr ValueExpression
+	firstExpr = firstId
+	// try for function call
+	if token2.TokenType == tokenizer.ROpenParen {
+		funcName := firstId
+		firstExpr, err = newFuncCallExpression(funcName, tokIter)
+		if err != nil {
+			return nil, err
+		}
+		// tokIter is currently at the closing parenthesis ')'
+		// if there's something next, it could be an operator
+		_, ok := tokIter.Next()
+		if !ok {
+			return firstExpr, nil
+		}
+	}
+
+	// operator, try for binary expression
+	if token2.TokenType.IsOperator() {
+		if token2.TokenType == tokenizer.RAssign {
+			return nil, ggErrs.Runtime("invalid = in value expression: %s", tokIter.String())
+		}
+
+		lhs := firstExpr
+		op := token2.Str
+		rhs, err := parseValueExpr(tokIter)
+		if err != nil {
+			return nil, err
+		}
+
+		return newBinaryExpression(lhs, op, rhs), nil
+
+	}
+	//if token2.TokenType.IsSeparator() {
+	return firstExpr, nil
+	//}
+
+	// this is now a value expression followed by a value expression
+	//return nil, ggErrs.Runtime("invalid expression\n%s", tokIter.String())
+}
+
+func newFuncCallExpression(funcName *Identifier, iter *iterator.Iter[tokenizer.Token]) (ValueExpression, error) {
+	//params, err := paramsList(iter)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//var args []ValueExpression
+	//for _, param := range params {
+	//	ve, err := parseValueExpr(iterator.New(param))
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	args = append(args, ve)
+	//}
+	// iter is current at the opening parenthesis '('.
+
+	// if the next char is a closing paren, dont check for value expr
+
+	nextTok, ok := iter.Peek()
+	if !ok {
+		return nil, ggErrs.Runtime("expected closing parenthesis ')' or args after function name\n%s", iter.String())
+	}
+	if nextTok.TokenType == tokenizer.RCloseParen {
+		iter.Next() // consume the closing parenthesis ')'
+		return &FunctionCallExpression{
+			Id:     funcName,
+			Params: nil,
+		}, nil
+	}
+
+	var args []ValueExpression
+	for {
+		val, err := parseValueExpr(iter)
+		if err != nil {
+			return nil, err
+		}
+		if !iter.HasCurrent() {
+			return nil, ggErrs.Runtime("unexpected end of arg list\n%s", iter.String())
+		}
+		args = append(args, val)
+		mbComma := iter.Current()
+		if mbComma.TokenType == tokenizer.RComma {
+			continue
+		}
+		if mbComma.TokenType == tokenizer.RCloseParen {
+			break
+		}
+	}
+	return &FunctionCallExpression{
+		Id:     funcName,
+		Params: args,
+	}, nil
+}
+func paramsList(tok *iterator.Iter[tokenizer.Token]) ([][]tokenizer.Token, error) {
+	var list [][]tokenizer.Token
+
+	var currList []tokenizer.Token
+	for {
+		curr, ok := tok.Next()
+		if !ok {
+			return nil, ggErrs.Runtime("unterminated arg list\n%s", tok.String())
+		}
+		switch curr.TokenType {
+		case tokenizer.RComma:
+			list = append(list, currList)
+			currList = nil
+		case tokenizer.RCloseParen:
+			list = append(list, currList)
+			return list, nil
+		default:
+			// this could be illegal tokens, but parseValueExpr() will handle them
+			currList = append(currList, curr)
+		}
+	}
 }
 
 func newIdentifier(t tokenizer.Token) (*Identifier, error) {

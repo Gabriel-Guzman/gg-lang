@@ -28,10 +28,10 @@ func (wi *Iter[T]) String() string {
 	var out []string
 	for i, w := range wi.members {
 		if i == wi.curr {
-			out = append(out, fmt.Sprintf("[[%v]]", w))
+			out = append(out, fmt.Sprintf("[[%+v]]", w))
 			continue
 		}
-		out = append(out, fmt.Sprintf("%v", w))
+		out = append(out, fmt.Sprintf("%+v", w))
 	}
 
 	done := strings.Join(out, ", ")
@@ -40,6 +40,9 @@ func (wi *Iter[T]) String() string {
 
 func (wi *Iter[T]) Current() T {
 	return wi.members[wi.curr]
+}
+func (wi *Iter[T]) HasCurrent() bool {
+	return wi.curr >= 0 && wi.curr < len(wi.members)
 }
 
 func (wi *Iter[T]) Next() (T, bool) {

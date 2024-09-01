@@ -1,6 +1,6 @@
 package operators
 
-import "github.com/gabriel-guzman/gg-lang/src/variables"
+import "gg-lang/src/variables"
 
 // string + string
 type plusStrings struct{}
