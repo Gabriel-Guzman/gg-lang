@@ -3,7 +3,6 @@ package godTree
 
 import (
 	"fmt"
-	"gg-lang/src/tokenizer"
 	"strings"
 )
 
@@ -21,10 +20,6 @@ type Identifier struct {
 	idKind IdExprKind
 }
 
-func (id *Identifier) MinShape() []tokenizer.TokenType {
-	return []tokenizer.TokenType{tokenizer.IdentifierMask}
-}
-
 func (id *Identifier) Name() string {
 	return id.Raw
 }
@@ -37,14 +32,6 @@ type BinaryExpression struct {
 	Op   string
 	Rhs  ValueExpression
 	Type ExpressionKind
-}
-
-func (be *BinaryExpression) MinShape() []tokenizer.TokenType {
-	return []tokenizer.TokenType{
-		tokenizer.IdentifierMask,
-		tokenizer.OperatorMask,
-		tokenizer.IdentifierMask,
-	}
 }
 
 func (be *BinaryExpression) Name() string         { return be.Op }
@@ -60,16 +47,8 @@ func newBinaryExpression(lhs ValueExpression, operator string, rhs ValueExpressi
 
 // a(b, c)
 type FunctionCallExpression struct {
-	Id     *Identifier
-	Params []ValueExpression
-}
-
-func (fce *FunctionCallExpression) MinShape() []tokenizer.TokenType {
-	return []tokenizer.TokenType{
-		tokenizer.Var,
-		tokenizer.ROpenParen,
-		tokenizer.IdentifierMask,
-	}
+	Id   Identifier
+	Args []ValueExpression
 }
 
 func (fce *FunctionCallExpression) Name() string         { return fce.Id.Name() }
@@ -81,14 +60,6 @@ type AssignmentExpression struct {
 	Value  ValueExpression
 }
 
-func (ae *AssignmentExpression) MinShape() []tokenizer.TokenType {
-	return []tokenizer.TokenType{
-		tokenizer.Var,
-		tokenizer.RAssign,
-		tokenizer.IdentifierMask,
-	}
-}
-
 func (ae *AssignmentExpression) Kind() ExpressionKind { return ExprAssignment }
 func newAssignmentExpression(target *Identifier, value ValueExpression) *AssignmentExpression {
 	return &AssignmentExpression{
@@ -96,6 +67,14 @@ func newAssignmentExpression(target *Identifier, value ValueExpression) *Assignm
 		Value:  value,
 	}
 }
+
+type FunctionDeclExpression struct {
+	Target Identifier
+	Parms  []string
+	Value  []Expression
+}
+
+func (fde *FunctionDeclExpression) Kind() ExpressionKind { return ExprFuncDecl }
 
 func ind(count int) string {
 	var spaces []rune
@@ -114,7 +93,6 @@ func ExprString(e Expression, d int, sb *strings.Builder) {
 	switch e.Kind() {
 	case ExprAssignment:
 		val := e.(*AssignmentExpression)
-
 		w("assign of ")
 		ExprString(val.Value, d+1, sb)
 		sb.WriteString("\n")
@@ -133,6 +111,19 @@ func ExprString(e Expression, d int, sb *strings.Builder) {
 		goto IdentifierStr
 	case ExprStringLiteral:
 		goto IdentifierStr
+	case ExprFunctionCall:
+		val := e.(*FunctionCallExpression)
+		w("call to " + val.Id.Name())
+		for _, param := range val.Args {
+			ExprString(param, d+1, sb)
+		}
+	case ExprFuncDecl:
+		val := e.(*FunctionDeclExpression)
+		w("decl of " + val.Target.Name() + fmt.Sprintf("(%s)\n", strings.Join(val.Parms, ", ")))
+		w(" to do")
+		for _, expr := range val.Value {
+			ExprString(expr, d+1, sb)
+		}
 	default:
 		panic(fmt.Sprintf("unknown expression type: %T", e))
 	}

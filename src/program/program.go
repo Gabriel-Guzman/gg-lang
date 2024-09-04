@@ -6,20 +6,27 @@ import (
 	"gg-lang/src/godTree"
 	"gg-lang/src/operators"
 	"gg-lang/src/variables"
-	"strconv"
+	"os"
 	"strings"
 )
 
+type Scope struct {
+	Parent    *Scope
+	variables map[string]*variables.Variable
+}
+
 type Program struct {
-	variables map[string]variables.Variable
-	opMap     *operators.OpMap
+	//variables map[string]variables.Variable
+	top     *Scope
+	current *Scope
+	opMap   *operators.OpMap
 }
 
 func (p *Program) String() string {
 	var sb strings.Builder
 	sb.WriteString("Variables:\n")
-	for k, v := range p.variables {
-		sb.WriteString(fmt.Sprintf("%s: %+v\n", k, v))
+	for k, v := range p.top.variables {
+		sb.WriteString(fmt.Sprintf("\t%s: %+v\n", k, v))
 	}
 	sb.WriteString("\nOperators:\n")
 	sb.WriteString(p.opMap.String())
@@ -27,9 +34,12 @@ func (p *Program) String() string {
 }
 
 func New() *Program {
+	top := &Scope{variables: make(map[string]*variables.Variable)}
+
 	return &Program{
-		variables: make(map[string]variables.Variable),
-		opMap:     operators.Default(),
+		top:     top,
+		current: top,
+		opMap:   operators.Default(),
 	}
 }
 
@@ -40,12 +50,62 @@ func (p *Program) Run(ast *godTree.Ast) error {
 			if err := p.evaluateAssignment(expr.(*godTree.AssignmentExpression)); err != nil {
 				return ggErrs.Runtime("expr %d: %v", i, err)
 			}
+
+		case godTree.ExprFuncDecl:
+			decl := expr.(*godTree.FunctionDeclExpression)
+			newVar := variables.Variable{
+				Name:  decl.Target.Raw,
+				Typ:   variables.Function,
+				Value: decl,
+			}
+			p.top.variables[newVar.Name] = &newVar
+
+		case godTree.ExprFunctionCall:
+			fcall := expr.(*godTree.FunctionCallExpression)
+			val, _, err := p.evaluateValueExpr(fcall)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("%s => %+v\n", fcall.Id.Raw, val)
 		default:
-			return ggErrs.Crit("invalid expression kind: %d", expr.Kind())
+			return ggErrs.Crit("Invalid top-level expression: %s", expr.Kind().String())
 		}
 	}
 
 	return nil
+}
+
+func (p *Program) enterNewScope() {
+	ns := &Scope{
+		Parent:    p.current,
+		variables: make(map[string]*variables.Variable),
+	}
+
+	p.current = ns
+}
+
+func (p *Program) exitScope() {
+	if p.current == p.top {
+		fmt.Println("exitScope called on top scope. Goodbye!")
+		os.Exit(1)
+	}
+	p.current = p.current.Parent
+}
+
+func (p *Program) findVariable(name string) *variables.Variable {
+	s := p.current
+	for {
+		res, ok := s.variables[name]
+		if ok {
+			return res
+		}
+
+		if s.Parent == nil {
+			return nil
+		}
+
+		s = s.Parent
+	}
 }
 
 func (p *Program) evaluateAssignment(expr *godTree.AssignmentExpression) error {
@@ -54,8 +114,6 @@ func (p *Program) evaluateAssignment(expr *godTree.AssignmentExpression) error {
 	default:
 		return ggErrs.Runtime("invalid assignment target: %s", expr.Target.Raw)
 	}
-
-	newVar := variables.Variable{Name: expr.Target.Raw}
 
 	if expr.Value.Kind() > godTree.SentinelValueExpression {
 		return ggErrs.Runtime("cannot make value for %v", expr)
@@ -66,53 +124,17 @@ func (p *Program) evaluateAssignment(expr *godTree.AssignmentExpression) error {
 		return err
 	}
 
+	existing := p.findVariable(expr.Target.Name())
+	if existing != nil {
+		existing.Value = val
+		existing.Typ = typ
+		return nil
+	}
+
+	newVar := variables.Variable{Name: expr.Target.Raw}
 	newVar.Value = val
 	newVar.Typ = typ
 
-	p.variables[newVar.Name] = newVar
-
+	p.current.variables[newVar.Name] = &newVar
 	return nil
-}
-
-func (p *Program) evaluateValueExpr(expr godTree.ValueExpression) (interface{}, variables.VarType, error) {
-	switch expr.Kind() {
-	case godTree.ExprVariable:
-		name := expr.(*godTree.Identifier).Name()
-		if val, ok := p.variables[name]; ok {
-			return val.Value, val.Typ, nil
-		}
-		return nil, 0, ggErrs.Runtime("undefined variable: %s", name)
-	case godTree.ExprNumberLiteral:
-		name := expr.(*godTree.Identifier).Name()
-		intVal, err := strconv.Atoi(name)
-		if err != nil {
-			return nil, 0, ggErrs.Crit("unable to evaluate number literal: %s", err.Error())
-		}
-		return intVal, variables.Integer, nil
-	case godTree.ExprStringLiteral:
-		return expr.(*godTree.Identifier).Name(), variables.String, nil
-	case godTree.ExprBinary:
-		binExp := expr.(*godTree.BinaryExpression)
-		left, ltyp, err := p.evaluateValueExpr(binExp.Lhs)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		right, rtyp, err := p.evaluateValueExpr(binExp.Rhs)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		op, exists := p.opMap.Get(binExp.Op, ltyp, rtyp)
-		if !exists {
-			return nil, 0, ggErrs.Runtime("evaluateValueExpr: op %s not supported between types %v and %v", binExp.Op, ltyp, rtyp)
-		}
-
-		value := op.Evaluate(left, right)
-		resultType := op.ResultType()
-
-		return value, resultType, nil
-	default:
-		return nil, 0, ggErrs.Crit("evaluateValueExpr: invalid expression type: %v", expr)
-	}
 }

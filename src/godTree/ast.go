@@ -25,17 +25,68 @@ func New() *Ast {
 	return a
 }
 
+func tokStringer(t tokenizer.Token) string {
+	return t.Str
+}
+
 func (a *Ast) ParseStmts(tokens [][]tokenizer.Token) error {
-	for _, stmt := range tokens {
-		tokIter := iterator.New(stmt)
+	iter := iterator.New(tokens)
+	var currStmt []tokenizer.Token
+	tokIter := iterator.New(currStmt)
+
+	nextStmt := func() bool {
+		currStmt, ok := iter.Next()
+		if !ok {
+			return ok
+		}
+
+		tokIter = iterator.New(currStmt)
+		tokIter.Stringer = tokStringer
+		return true
+	}
+
+outer:
+	for {
+		ok := nextStmt()
+		if !ok {
+			break
+		}
 		expr, err := parseStmt(tokIter)
 		if err != nil {
 			return err
 		}
+		// trap for function declaration
+		if casted, ok := expr.(*FunctionDeclExpression); ok {
+			for {
+				ok = nextStmt()
+				if !ok {
+					return ggErrs.Runtime("missing } in function decl\n%s", tokIter.String())
+				}
+
+				// handle close brace (end function decl)
+				if next, ok := tokIter.Peek(); ok {
+					if next.TokenType == tokenizer.RCloseBrace {
+						if tokIter.Len() > 1 {
+							return ggErrs.Runtime("unexpected expr after }\n%s", tokIter.String())
+						}
+
+						a.Body = append(a.Body, casted)
+						tokIter.Next()
+						continue outer
+					}
+				}
+
+				funcBodyExpr, err := parseStmt(tokIter)
+				if err != nil {
+					return err
+				}
+				casted.Value = append(casted.Value, funcBodyExpr)
+			}
+		}
+
 		if tokIter.HasNext() {
 			return ggErrs.Runtime("couldnt finish parsing statement\n%s", tokIter.String())
 		}
-
 		a.Body = append(a.Body, expr)
 	}
 	return nil
@@ -47,6 +98,55 @@ func parseStmt(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
 	if !exists {
 		return nil, errors.New("expected a statement")
 	}
+
+	if curr.TokenType == tokenizer.Function {
+
+		mbIdent, ok := tokIter.Next()
+		if !ok {
+			return nil, ggErrs.Runtime("Expected func name\n%s", tokIter.String())
+		}
+
+		id, err := newIdentifier(mbIdent)
+		if err != nil {
+			return nil, err
+		}
+
+		mbOpenParen, ok := tokIter.Next()
+		if !ok || mbOpenParen.TokenType != tokenizer.ROpenParen {
+			return nil, ggErrs.Runtime("Expected (\n%s", tokIter.String())
+		}
+
+		var parms []string
+		for {
+			parm, ok := tokIter.Next()
+			if !ok {
+				return nil, ggErrs.Runtime("Unexpected end of param list\n%s", tokIter.String())
+			}
+			if parm.TokenType == tokenizer.RCloseParen {
+				break
+			}
+			if parm.TokenType == tokenizer.RComma {
+				continue
+			}
+			if parm.TokenType != tokenizer.Var {
+				return nil, ggErrs.Runtime("Unexpected token\n%s", tokIter.String())
+			}
+
+			parms = append(parms, parm.Str)
+		}
+
+		mbOpenBrack, ok := tokIter.Next()
+		if !ok || mbOpenBrack.TokenType != tokenizer.ROpenBrace {
+			return nil, ggErrs.Runtime("Expected {\n%s", tokIter.String())
+		}
+
+		return &FunctionDeclExpression{
+			Target: *id,
+			Parms:  parms,
+			Value:  nil,
+		}, nil
+	}
+
 	if !curr.TokenType.IsIdentifier() {
 		return nil, ggErrs.Runtime("expected an identifier\n%s", tokIter.String())
 	}
@@ -75,6 +175,7 @@ func parseStmt(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
 	return expr, err
 }
 
+// tokIter should be pointing to the token right before the value expression
 func parseAssignmentExpr(id *Identifier, tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
 	expr, err := parseValueExpr(tokIter)
 	if err != nil {
@@ -85,6 +186,7 @@ func parseAssignmentExpr(id *Identifier, tokIter *iterator.Iter[tokenizer.Token]
 	return at, nil
 }
 
+// tokIter should be pointing to the token right before the value expression
 func parseValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (ValueExpression, error) {
 	// first word in value
 	curr, exists := tokIter.Next()
@@ -138,87 +240,7 @@ func parseValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (ValueExpression, e
 		return newBinaryExpression(lhs, op, rhs), nil
 
 	}
-	//if token2.TokenType.IsSeparator() {
 	return firstExpr, nil
-	//}
-
-	// this is now a value expression followed by a value expression
-	//return nil, ggErrs.Runtime("invalid expression\n%s", tokIter.String())
-}
-
-func newFuncCallExpression(funcName *Identifier, iter *iterator.Iter[tokenizer.Token]) (ValueExpression, error) {
-	//params, err := paramsList(iter)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//var args []ValueExpression
-	//for _, param := range params {
-	//	ve, err := parseValueExpr(iterator.New(param))
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	args = append(args, ve)
-	//}
-	// iter is current at the opening parenthesis '('.
-
-	// if the next char is a closing paren, dont check for value expr
-
-	nextTok, ok := iter.Peek()
-	if !ok {
-		return nil, ggErrs.Runtime("expected closing parenthesis ')' or args after function name\n%s", iter.String())
-	}
-	if nextTok.TokenType == tokenizer.RCloseParen {
-		iter.Next() // consume the closing parenthesis ')'
-		return &FunctionCallExpression{
-			Id:     funcName,
-			Params: nil,
-		}, nil
-	}
-
-	var args []ValueExpression
-	for {
-		val, err := parseValueExpr(iter)
-		if err != nil {
-			return nil, err
-		}
-		if !iter.HasCurrent() {
-			return nil, ggErrs.Runtime("unexpected end of arg list\n%s", iter.String())
-		}
-		args = append(args, val)
-		mbComma := iter.Current()
-		if mbComma.TokenType == tokenizer.RComma {
-			continue
-		}
-		if mbComma.TokenType == tokenizer.RCloseParen {
-			break
-		}
-	}
-	return &FunctionCallExpression{
-		Id:     funcName,
-		Params: args,
-	}, nil
-}
-func paramsList(tok *iterator.Iter[tokenizer.Token]) ([][]tokenizer.Token, error) {
-	var list [][]tokenizer.Token
-
-	var currList []tokenizer.Token
-	for {
-		curr, ok := tok.Next()
-		if !ok {
-			return nil, ggErrs.Runtime("unterminated arg list\n%s", tok.String())
-		}
-		switch curr.TokenType {
-		case tokenizer.RComma:
-			list = append(list, currList)
-			currList = nil
-		case tokenizer.RCloseParen:
-			list = append(list, currList)
-			return list, nil
-		default:
-			// this could be illegal tokens, but parseValueExpr() will handle them
-			currList = append(currList, curr)
-		}
-	}
 }
 
 func newIdentifier(t tokenizer.Token) (*Identifier, error) {

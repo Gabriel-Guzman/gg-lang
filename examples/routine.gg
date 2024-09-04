@@ -1,0 +1,5 @@
+number1 = 3;
+routine add_number (other_number) {
+    number1 = number1 + other_number;
+};
+add_number(100);

@@ -1,6 +1,7 @@
 package tokenizer
 
 import (
+	"fmt"
 	"gg-lang/src/ggErrs"
 	"gg-lang/src/iterator"
 	uni "unicode"
@@ -35,15 +36,14 @@ const (
 	NumberLiteral
 	StringLiteral
 	endIdentifiers
-)
 
-const (
-	OperatorMask   = RPlus | RMinus | RMul | RDiv | RAssign
-	IdentifierMask = Var | NumberLiteral | StringLiteral
+	beginKeywords
+	Function
+	endKeywords
 )
 
 func (t TokenType) IsOperator() bool {
-	return t&OperatorMask != 0
+	return t > beginOperators && t < endOperators
 }
 func (t TokenType) IsContainer() bool {
 	return t > beginContainers && t < endContainers
@@ -57,7 +57,7 @@ func (t TokenType) IsIdentifier() bool {
 
 type token string
 
-var reservedChars = map[TokenType]token{
+var reservedTokens = map[TokenType]token{
 	RPlus:   "+",
 	RMinus:  "-",
 	RMul:    "*",
@@ -71,26 +71,24 @@ var reservedChars = map[TokenType]token{
 	RCloseBrace: "}",
 	RComma:      ",",
 	RSpace:      " ",
+	Function:    "routine",
 }
 
-var reservedCharsMap = map[string]TokenType{}
+var reservedTokensMap = map[string]TokenType{}
 
 func init() {
-	for i, c := range reservedChars {
-		reservedCharsMap[string(c)] = i
+	for i, c := range reservedTokens {
+		reservedTokensMap[string(c)] = i
 	}
 }
 
 func isReserved(in string) bool {
-	_, ok := reservedCharsMap[in]
+	_, ok := reservedTokensMap[in]
 	return ok
 }
-func Lookup(in string) (TokenType, bool) {
-	op, ok := reservedCharsMap[in]
-	return op, ok
-}
+
 func lookup(in string) TokenType {
-	return reservedCharsMap[in]
+	return reservedTokensMap[in]
 }
 
 type Token struct {
@@ -100,8 +98,16 @@ type Token struct {
 	TokenType TokenType
 }
 
+func (t Token) String() string {
+	return fmt.Sprintf("(%d-%d) %s", t.Start, t.End, t.Str)
+}
+
 func TokenizeRunes(ins []rune) ([][]Token, error) {
 	iter := iterator.New(ins)
+	iter.Stringer = func(in rune) string {
+		return string(in)
+	}
+	iter.Separator = ""
 
 	var stmts [][]Token
 	var stmt []Token
@@ -118,9 +124,28 @@ func TokenizeRunes(ins []rune) ([][]Token, error) {
 				stmt = nil
 				break sw_stmt
 			}
+
 			stmt = append(stmt, newToken(iter, opt))
+			if opt == ROpenBrace {
+				stmts = append(stmts, stmt)
+				stmt = nil
+				break sw_stmt
+			}
 		case uni.IsLetter(curr):
-			stmt = append(stmt, variable(iter))
+			start := iter.Index()
+			vr := variable(iter)
+			end := iter.Index()
+			if isReserved(vr.Str) {
+				opt := lookup(vr.Str)
+				stmt = append(stmt, Token{
+					Start:     start,
+					End:       end,
+					Str:       vr.Str,
+					TokenType: opt,
+				})
+			} else {
+				stmt = append(stmt, vr)
+			}
 		case uni.IsDigit(curr):
 			tok, err := numLiteral(iter)
 			if err != nil {
@@ -144,7 +169,7 @@ func TokenizeRunes(ins []rune) ([][]Token, error) {
 	}
 
 	if len(stmt) > 0 {
-		return nil, ggErrs.Runtime("unterminated statement")
+		return nil, ggErrs.Runtime("unterminated statement\n%s\n%s", stmt, iter.String())
 	}
 	return stmts, nil
 }
@@ -181,7 +206,6 @@ func stringLiteral(iter *iterator.Iter[rune]) (Token, error) {
 		TokenType: StringLiteral,
 	}
 
-	//iter.Next() // consume the trailing "
 	return ret, nil
 }
 
@@ -196,6 +220,7 @@ loop:
 		case uni.IsDigit(next):
 			num = append(num, next)
 			_, ok = iter.Next() // consume the next rune
+			next, ok = iter.Peek()
 		case uni.IsLetter(next):
 			return Token{}, ggErrs.Runtime("unexpected character %c after number literal", next)
 		default:

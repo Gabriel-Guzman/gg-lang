@@ -31,7 +31,7 @@ func (o *OpMap) Set(name string, left, right variables.VarType, op Operator) {
 func (o *OpMap) String() string {
 	var sb strings.Builder
 	for key, op := range o.ops {
-		sb.WriteString(fmt.Sprintf("%s: %T\n", key, op))
+		sb.WriteString(fmt.Sprintf("\t%s: %T\n", key, op))
 	}
 	return sb.String()
 }
@@ -55,6 +55,9 @@ func Default() *OpMap {
 
 	plusStr := plusStrings{}
 	opm.Set("+", variables.String, variables.String, &plusStr)
+
+	opm.Set("+", variables.Integer, variables.String, &intPlusString{})
+	opm.Set("+", variables.String, variables.Integer, &stringPlusInt{})
 
 	return opm
 }

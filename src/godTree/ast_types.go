@@ -1,6 +1,6 @@
-package godTree
+//go:generate stringer -type=ExpressionKind
 
-import "gg-lang/src/tokenizer"
+package godTree
 
 type ExpressionKind int
 
@@ -19,16 +19,15 @@ const (
 	   assignmentExpression implementing types
 	*/
 	ExprAssignment
+	ExprFuncDecl
 )
 
 type Expression interface {
 	Kind() ExpressionKind
-	MinShape() []tokenizer.TokenType
 }
 
 type ValueExpression interface {
+	Expression
+
 	Name() string
-	// Expression members
-	Kind() ExpressionKind
-	MinShape() []tokenizer.TokenType
 }

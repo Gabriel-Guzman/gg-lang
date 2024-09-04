@@ -6,12 +6,14 @@ import (
 )
 
 type Iter[T any] struct {
-	members []T
-	curr    int
+	members   []T
+	curr      int
+	Stringer  func(T) string
+	Separator string
 }
 
 func New[T any](words []T) *Iter[T] {
-	return &Iter[T]{members: words, curr: -1}
+	return &Iter[T]{members: words, curr: -1, Separator: " "}
 }
 
 func (wi *Iter[T]) Index() int {
@@ -27,14 +29,20 @@ func (wi *Iter[T]) Copy() *Iter[T] {
 func (wi *Iter[T]) String() string {
 	var out []string
 	for i, w := range wi.members {
+		var str string
+		if wi.Stringer != nil {
+			str = wi.Stringer(w)
+		} else {
+			str = fmt.Sprintf("%+v", w)
+		}
 		if i == wi.curr {
-			out = append(out, fmt.Sprintf("[[%+v]]", w))
+			out = append(out, fmt.Sprintf(">>%s<<", str))
 			continue
 		}
-		out = append(out, fmt.Sprintf("%+v", w))
+		out = append(out, str)
 	}
 
-	done := strings.Join(out, ", ")
+	done := strings.Join(out, wi.Separator)
 	return done
 }
 
@@ -77,5 +85,9 @@ func (wi *Iter[T]) Prev() (T, bool) {
 		var ret T
 		return ret, false
 	}
-	return (wi.members)[wi.curr-1], true
+	return wi.members[wi.curr-1], true
+}
+
+func (wi *Iter[T]) Len() int {
+	return len(wi.members)
 }
