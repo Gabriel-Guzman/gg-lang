@@ -63,24 +63,11 @@ outer:
 					return ggErrs.Runtime("missing } in function decl\n%s", tokIter.String())
 				}
 
-				// handle close brace (end function decl)
-				if next, ok := tokIter.Peek(); ok {
-					if next.TokenType == tokenizer.RCloseBrace {
-						if tokIter.Len() > 1 {
-							return ggErrs.Runtime("unexpected expr after }\n%s", tokIter.String())
-						}
-
-						a.Body = append(a.Body, casted)
-						tokIter.Next()
-						continue outer
-					}
-				}
-
-				funcBodyExpr, err := parseStmt(tokIter)
+				err := a.funcTrap(casted, tokIter)
 				if err != nil {
 					return err
 				}
-				casted.Value = append(casted.Value, funcBodyExpr)
+				continue outer
 			}
 		}
 
@@ -90,6 +77,30 @@ outer:
 		a.Body = append(a.Body, expr)
 	}
 	return nil
+}
+
+func (a *Ast) funcTrap(casted *FunctionDeclExpression, tokIter *iterator.Iter[tokenizer.Token]) error {
+	for {
+
+		// handle close brace (end function decl)
+		if next, ok := tokIter.Peek(); ok {
+			if next.TokenType == tokenizer.RCloseBrace {
+				if tokIter.Len() > 1 {
+					return ggErrs.Runtime("unexpected expr after }\n%s", tokIter.String())
+				}
+
+				a.Body = append(a.Body, casted)
+				tokIter.Next()
+				return nil
+			}
+		}
+
+		funcBodyExpr, err := parseStmt(tokIter)
+		if err != nil {
+			return err
+		}
+		casted.Value = append(casted.Value, funcBodyExpr)
+	}
 }
 
 func parseStmt(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
