@@ -113,90 +113,91 @@ func (a *Ast) funcTrap(casted *FunctionDeclExpression) error {
 }
 
 func parseStmt(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
+	initial := tokIter.Copy()
 	// move to first token in stmt
 	curr, exists := tokIter.Next()
 	if !exists {
 		return nil, ggErrs.Runtime("expected a statement\n%s", tokIter.String())
 	}
 
+	// check for reserved keywords
 	if curr.TokenType == tokenizer.Function {
-
-		mbIdent, ok := tokIter.Next()
-		if !ok {
-			return nil, ggErrs.Runtime("Expected func name\n%s", tokIter.String())
-		}
-
-		id, err := newIdentifier(mbIdent)
-		if err != nil {
-			return nil, err
-		}
-
-		mbOpenParen, ok := tokIter.Next()
-		if !ok || mbOpenParen.TokenType != tokenizer.ROpenParen {
-			return nil, ggErrs.Runtime("Expected (\n%s", tokIter.String())
-		}
-
-		var parms []string
-		for {
-			parm, ok := tokIter.Next()
-			if !ok {
-				return nil, ggErrs.Runtime("Unexpected end of param list\n%s", tokIter.String())
-			}
-			if parm.TokenType == tokenizer.RCloseParen {
-				break
-			}
-			if parm.TokenType == tokenizer.RComma {
-				continue
-			}
-			if parm.TokenType != tokenizer.Var {
-				return nil, ggErrs.Runtime("Unexpected token\n%s", tokIter.String())
-			}
-
-			parms = append(parms, parm.Str)
-		}
-
-		mbOpenBrack, ok := tokIter.Next()
-		if !ok || mbOpenBrack.TokenType != tokenizer.ROpenBrace {
-			return nil, ggErrs.Runtime("Expected {\n%s", tokIter.String())
-		}
-
-		return &FunctionDeclExpression{
-			Target: *id,
-			Parms:  parms,
-			Value:  nil,
-		}, nil
+		funcDecl, err := parseFuncDecl(tokIter)
+		return funcDecl, err
 	}
 
-	if !curr.TokenType.IsIdentifier() {
-		return nil, ggErrs.Runtime("expected an identifier\n%s", tokIter.String())
-	}
-
-	if !(curr.TokenType == tokenizer.Var) {
-		return nil, ggErrs.Runtime("expected a variable identifier\n%s", tokIter.String())
-	}
-
+	// should be an identifier
 	id, err := newIdentifier(curr)
 	if err != nil {
 		return nil, err
 	}
 
 	next, ok := tokIter.Peek()
+	// TODO this doesn't make sense
+	if !ok {
+		expr, err := parseValueExpr(tokIter)
+		return expr, err
+	}
 	nextTokType := next.TokenType
 
-	if ok && nextTokType == tokenizer.RAssign {
+	switch {
+	case nextTokType == tokenizer.RAssign:
 		tokIter.Next() // consume the '=' token
 		expr, err := parseAssignmentExpr(id, tokIter)
 		return expr, err
+	case nextTokType.IsOperator():
+		expr, err := parseValueExpr(initial)
+		return expr, err
+	default:
+		return nil, ggErrs.Runtime("Unexpected token\n%s", tokIter.String)
+	}
+}
+
+func parseFuncDecl(tokIter *iterator.Iter[tokenizer.Token]) (*FunctionDeclExpression, error) {
+	mbIdent, ok := tokIter.Next()
+	if !ok {
+		return nil, ggErrs.Runtime("Expected func name\n%s", tokIter.String())
 	}
 
-	// not assign, its value. this could be a lone expression i.e. "swag";
-	tokIter.Reset()
-	expr, err := parseValueExpr(tokIter)
+	id, err := newIdentifier(mbIdent)
 	if err != nil {
 		return nil, err
 	}
 
-	return expr, nil
+	mbOpenParen, ok := tokIter.Next()
+	if !ok || mbOpenParen.TokenType != tokenizer.ROpenParen {
+		return nil, ggErrs.Runtime("Expected (\n%s", tokIter.String())
+	}
+
+	var parms []string
+	for {
+		parm, ok := tokIter.Next()
+		if !ok {
+			return nil, ggErrs.Runtime("Unexpected end of param list\n%s", tokIter.String())
+		}
+		if parm.TokenType == tokenizer.RCloseParen {
+			break
+		}
+		if parm.TokenType == tokenizer.RComma {
+			continue
+		}
+		if parm.TokenType != tokenizer.Var {
+			return nil, ggErrs.Runtime("Unexpected token\n%s", tokIter.String())
+		}
+
+		parms = append(parms, parm.Str)
+	}
+
+	mbOpenBrack, ok := tokIter.Next()
+	if !ok || mbOpenBrack.TokenType != tokenizer.ROpenBrace {
+		return nil, ggErrs.Runtime("Expected {\n%s", tokIter.String())
+	}
+
+	return &FunctionDeclExpression{
+		Target: *id,
+		Parms:  parms,
+		Value:  nil,
+	}, nil
 }
 
 // tokIter should be pointing to the token right before the value expression
@@ -211,7 +212,8 @@ func parseAssignmentExpr(id *Identifier, tokIter *iterator.Iter[tokenizer.Token]
 }
 
 // tokIter should be pointing to the token right before the value expression
-func parseValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (IValExpr, error) {
+func parseValueExpr(iter *iterator.Iter[tokenizer.Token]) (IValExpr, error) {
+	tokIter := iter.Copy()
 	// first word in value
 	firstExpr, err := parseSingleValueExpr(tokIter)
 	if err != nil {
@@ -231,7 +233,7 @@ func parseValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (IValExpr, error) {
 			return nil, ggErrs.Runtime("invalid = in value expression: %s", tokIter.String())
 		}
 
-		binaryExpr, err := parseBinaryExpression(firstExpr, afterParen.Str, tokIter)
+		binaryExpr, err := parseBinaryExpression(iter)
 		if err != nil {
 			return nil, err
 		}
@@ -280,8 +282,6 @@ func parseSingleValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (IValExpr, er
 // iter should be pointing to right before the second expression after the first operator
 // returns a bin expression ready to be walked with operator precedence
 func parseBinaryExpression(
-	firstSingleValueExpr IValExpr,
-	op string,
 	tokIter *iterator.Iter[tokenizer.Token],
 ) (*BinaryExpression, error) {
 	secondExpr, err := parseSingleValueExpr(tokIter)
