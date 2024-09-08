@@ -7,53 +7,65 @@ import (
 	"strconv"
 )
 
-func (p *Program) evaluateValueExpr(expr godTree.ValueExpression) (interface{}, variables.VarType, error) {
+func (p *Program) evaluateValueExpr(expr godTree.ValueExpression) (*variables.RuntimeValue, error) {
 	switch expr.Kind() {
 	case godTree.ExprVariable:
 		name := expr.(*godTree.Identifier).Name()
 		v := p.findVariable(name)
 		if v != nil {
-			return v.Value, v.Typ, nil
+			return v.Value, nil
 		}
-		return nil, 0, ggErrs.Runtime("undefined variable: %s", name)
+		return nil, ggErrs.Runtime("undefined variable: %s", name)
 	case godTree.ExprNumberLiteral:
 		name := expr.(*godTree.Identifier).Name()
 		intVal, err := strconv.Atoi(name)
 		if err != nil {
-			return nil, 0, ggErrs.Crit("unable to evaluate number literal: %s", err.Error())
+			return nil, ggErrs.Crit("unable to evaluate number literal: %s", err.Error())
 		}
-		return intVal, variables.Integer, nil
+		return &variables.RuntimeValue{
+			Val: intVal,
+			Typ: variables.Integer,
+		}, nil
 	case godTree.ExprStringLiteral:
-		return expr.(*godTree.Identifier).Name(), variables.String, nil
+		return &variables.RuntimeValue{
+			Val: expr.(*godTree.Identifier).Name(),
+			Typ: variables.String,
+		}, nil
 	case godTree.ExprBinary:
 		binExp := expr.(*godTree.BinaryExpression)
-		left, ltyp, err := p.evaluateValueExpr(binExp.Lhs)
+		left, err := p.evaluateValueExpr(binExp.Lhs)
 		if err != nil {
-			return nil, 0, err
+			return nil, err
 		}
 
-		right, rtyp, err := p.evaluateValueExpr(binExp.Rhs)
+		right, err := p.evaluateValueExpr(binExp.Rhs)
 		if err != nil {
-			return nil, 0, err
+			return nil, err
 		}
 
-		op, exists := p.opMap.Get(binExp.Op, ltyp, rtyp)
+		op, exists := p.opMap.Get(binExp.Op, left.Typ, right.Typ)
 		if !exists {
-			return nil, 0, ggErrs.Runtime("evaluateValueExpr: op %s not supported between types %v and %v", binExp.Op, ltyp, rtyp)
+			return nil, ggErrs.Runtime("evaluateValueExpr: op %s not supported between types %v and %v", binExp.Op, left.Typ, right.Typ)
 		}
 
-		value := op.Evaluate(left, right)
+		value := op.Evaluate(left.Val, right.Val)
 		resultType := op.ResultType()
 
-		return value, resultType, nil
+		return &variables.RuntimeValue{
+			Val: value,
+			Typ: resultType,
+		}, nil
 	case godTree.ExprFunctionCall:
 		f := expr.(*godTree.FunctionCallExpression)
-		if err := p.funcCall(f); err != nil {
-			return 0, variables.Integer, err
+		if err2 := p.funcCall(f); err2 != nil {
+			return &variables.RuntimeValue{
+				Val: nil,
+				Typ: variables.Void,
+			}, nil
+		} else {
+			return nil, err2
 		}
-
-		return 0, variables.Integer, nil
 	default:
-		return nil, 0, ggErrs.Crit("evaluateValueExpr: invalid expression type: %v", expr)
+		return nil, ggErrs.Crit("evaluateValueExpr: invalid expression type: %v", expr)
 	}
 }

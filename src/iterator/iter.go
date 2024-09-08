@@ -21,13 +21,15 @@ func (wi *Iter[T]) Index() int {
 }
 
 func (wi *Iter[T]) Copy() *Iter[T] {
-	newWords := make([]T, len(wi.members))
-	copy(newWords, wi.members)
+	newWords := wi.members[:]
 	return &Iter[T]{members: newWords, curr: wi.curr}
 }
 
 func (wi *Iter[T]) String() string {
 	var out []string
+	if wi.curr == -1 {
+		out = append(out, ">><<")
+	}
 	for i, w := range wi.members {
 		var str string
 		if wi.Stringer != nil {
@@ -42,6 +44,9 @@ func (wi *Iter[T]) String() string {
 		out = append(out, str)
 	}
 
+	if wi.curr != -1 && !wi.HasCurrent() {
+		out = append(out, ">><<")
+	}
 	done := strings.Join(out, wi.Separator)
 	return done
 }

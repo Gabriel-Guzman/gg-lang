@@ -10,6 +10,7 @@ const (
 	*/
 	ExprBinary ExpressionKind = iota
 	ExprNumberLiteral
+	ExprBoolLiteral
 	ExprVariable
 	ExprStringLiteral
 	ExprFunctionCall

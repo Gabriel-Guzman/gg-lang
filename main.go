@@ -57,8 +57,8 @@ func main() {
 	if err != nil {
 		return
 	}
-	fmt.Printf("AST:")
-	fmt.Println(ast.String())
+	//fmt.Printf("AST:")
+	//fmt.Println(ast.String())
 
 	fmt.Println("\nRunning program...")
 	sess := program.New()

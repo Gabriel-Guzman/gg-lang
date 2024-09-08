@@ -2,6 +2,7 @@ package program
 
 import (
 	"fmt"
+	"gg-lang/src/builtin"
 	"gg-lang/src/ggErrs"
 	"gg-lang/src/godTree"
 	"gg-lang/src/operators"
@@ -16,7 +17,6 @@ type Scope struct {
 }
 
 type Program struct {
-	//variables map[string]variables.Variable
 	top     *Scope
 	current *Scope
 	opMap   *operators.OpMap
@@ -36,6 +36,17 @@ func (p *Program) String() string {
 func New() *Program {
 	top := &Scope{variables: make(map[string]*variables.Variable)}
 
+	for _, fn := range builtin.Defaults() {
+		//top.variables[fn.Name()]] = newV
+		top.variables[fn.Name()] = &variables.Variable{
+			Name: fn.Name(),
+			Value: &variables.RuntimeValue{
+				Val: fn,
+				Typ: variables.BuiltinFunction,
+			},
+		}
+	}
+
 	return &Program{
 		top:     top,
 		current: top,
@@ -54,19 +65,20 @@ func (p *Program) Run(ast *godTree.Ast) error {
 		case godTree.ExprFuncDecl:
 			decl := expr.(*godTree.FunctionDeclExpression)
 			newVar := variables.Variable{
-				Name:  decl.Target.Raw,
-				Typ:   variables.Function,
-				Value: decl,
+				Name: decl.Target.Raw,
+				Value: &variables.RuntimeValue{
+					Val: decl,
+					Typ: variables.Function,
+				},
 			}
 			p.top.variables[newVar.Name] = &newVar
 
 		case godTree.ExprFunctionCall:
 			fcall := expr.(*godTree.FunctionCallExpression)
-			val, _, err := p.evaluateValueExpr(fcall)
+			err := p.funcCall(fcall)
 			if err != nil {
-				return err
+				return ggErrs.Runtime("expr %d: %v", i, err)
 			}
-			fmt.Printf("%s => %+v\n", fcall.Id.Raw, val)
 		default:
 			return ggErrs.Crit("Invalid top-level expression: %s", expr.Kind().String())
 		}
@@ -119,7 +131,7 @@ func (p *Program) evaluateAssignment(expr *godTree.AssignmentExpression) error {
 		return ggErrs.Runtime("cannot make value for %v", expr)
 	}
 
-	val, typ, err := p.evaluateValueExpr(expr.Value)
+	val, err := p.evaluateValueExpr(expr.Value)
 	if err != nil {
 		return err
 	}
@@ -127,13 +139,13 @@ func (p *Program) evaluateAssignment(expr *godTree.AssignmentExpression) error {
 	existing := p.findVariable(expr.Target.Name())
 	if existing != nil {
 		existing.Value = val
-		existing.Typ = typ
+		//existing.Typ = val.Typ
 		return nil
 	}
 
 	newVar := variables.Variable{Name: expr.Target.Raw}
 	newVar.Value = val
-	newVar.Typ = typ
+	//newVar.Typ = val.Typ
 
 	p.current.variables[newVar.Name] = &newVar
 	return nil

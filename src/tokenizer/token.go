@@ -35,6 +35,8 @@ const (
 	Var
 	NumberLiteral
 	StringLiteral
+	TrueLiteral
+	FalseLiteral
 	endIdentifiers
 
 	beginKeywords
@@ -65,13 +67,15 @@ var reservedTokens = map[TokenType]token{
 	RTerm:   ";",
 	RAssign: "=",
 
-	ROpenParen:  "(",
-	RCloseParen: ")",
-	ROpenBrace:  "{",
-	RCloseBrace: "}",
-	RComma:      ",",
-	RSpace:      " ",
-	Function:    "routine",
+	ROpenParen:   "(",
+	RCloseParen:  ")",
+	ROpenBrace:   "{",
+	RCloseBrace:  "}",
+	RComma:       ",",
+	RSpace:       " ",
+	Function:     "routine",
+	TrueLiteral:  "true",
+	FalseLiteral: "false",
 }
 
 var reservedTokensMap = map[string]TokenType{}

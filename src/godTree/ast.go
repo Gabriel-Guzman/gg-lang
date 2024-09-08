@@ -1,7 +1,6 @@
 package godTree
 
 import (
-	"errors"
 	"gg-lang/src/ggErrs"
 	"gg-lang/src/iterator"
 	"gg-lang/src/tokenizer"
@@ -9,7 +8,18 @@ import (
 )
 
 type Ast struct {
-	Body []Expression
+	Body     []Expression
+	stmtIter *iterator.Iter[[]tokenizer.Token]
+	tokIter  *iterator.Iter[tokenizer.Token]
+}
+
+func (a *Ast) nextStmt() bool {
+	stmt, ok := a.stmtIter.Next()
+	if !ok {
+		return false
+	}
+	a.tokIter = iterator.New(stmt)
+	return true
 }
 
 func (a *Ast) String() string {
@@ -30,40 +40,41 @@ func tokStringer(t tokenizer.Token) string {
 }
 
 func (a *Ast) ParseStmts(tokens [][]tokenizer.Token) error {
-	iter := iterator.New(tokens)
+	a.stmtIter = iterator.New(tokens)
+
 	var currStmt []tokenizer.Token
-	tokIter := iterator.New(currStmt)
+	a.tokIter = iterator.New(currStmt)
 
-	nextStmt := func() bool {
-		currStmt, ok := iter.Next()
-		if !ok {
-			return ok
-		}
-
-		tokIter = iterator.New(currStmt)
-		tokIter.Stringer = tokStringer
-		return true
-	}
+	//nextStmt := func() bool {
+	//	currStmt, ok := iter.Next()
+	//	if !ok {
+	//		return ok
+	//	}
+	//
+	//	tokIter = iterator.New(currStmt)
+	//	tokIter.Stringer = tokStringer
+	//	return true
+	//}
 
 outer:
 	for {
-		ok := nextStmt()
+		ok := a.nextStmt()
 		if !ok {
 			break
 		}
-		expr, err := parseStmt(tokIter)
+		expr, err := parseStmt(a.tokIter)
 		if err != nil {
 			return err
 		}
 		// trap for function declaration
 		if casted, ok := expr.(*FunctionDeclExpression); ok {
 			for {
-				ok = nextStmt()
+				ok = a.nextStmt()
 				if !ok {
-					return ggErrs.Runtime("missing } in function decl\n%s", tokIter.String())
+					return ggErrs.Runtime("missing } in function decl\n%s", a.tokIter.String())
 				}
 
-				err := a.funcTrap(casted, tokIter)
+				err := a.funcTrap(casted)
 				if err != nil {
 					return err
 				}
@@ -71,35 +82,32 @@ outer:
 			}
 		}
 
-		if tokIter.HasNext() {
-			return ggErrs.Runtime("couldnt finish parsing statement\n%s", tokIter.String())
+		if a.tokIter.HasNext() {
+			return ggErrs.Runtime("couldnt finish parsing statement\n%s", a.tokIter.String())
 		}
 		a.Body = append(a.Body, expr)
 	}
 	return nil
 }
 
-func (a *Ast) funcTrap(casted *FunctionDeclExpression, tokIter *iterator.Iter[tokenizer.Token]) error {
+func (a *Ast) funcTrap(casted *FunctionDeclExpression) error {
 	for {
-
-		// handle close brace (end function decl)
-		if next, ok := tokIter.Peek(); ok {
-			if next.TokenType == tokenizer.RCloseBrace {
-				if tokIter.Len() > 1 {
-					return ggErrs.Runtime("unexpected expr after }\n%s", tokIter.String())
-				}
-
-				a.Body = append(a.Body, casted)
-				tokIter.Next()
-				return nil
-			}
+		curr, ok := a.tokIter.Peek()
+		if !ok {
+			return ggErrs.Runtime("unexpected end of token iter in func trap\n%s", a.tokIter.String())
 		}
 
-		funcBodyExpr, err := parseStmt(tokIter)
+		if curr.TokenType == tokenizer.RCloseBrace {
+			a.Body = append(a.Body, casted)
+			return nil
+		}
+
+		funcBodyExpr, err := parseStmt(a.tokIter)
 		if err != nil {
 			return err
 		}
 		casted.Value = append(casted.Value, funcBodyExpr)
+		a.nextStmt()
 	}
 }
 
@@ -107,7 +115,7 @@ func parseStmt(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
 	// move to first token in stmt
 	curr, exists := tokIter.Next()
 	if !exists {
-		return nil, errors.New("expected a statement")
+		return nil, ggErrs.Runtime("expected a statement\n%s", tokIter.String())
 	}
 
 	if curr.TokenType == tokenizer.Function {
@@ -263,6 +271,10 @@ func newIdentifier(t tokenizer.Token) (*Identifier, error) {
 		ik = IdExprVariable
 	case tokenizer.StringLiteral:
 		ik = IdExprString
+	case tokenizer.TrueLiteral:
+		ik = IdExprBool
+	case tokenizer.FalseLiteral:
+		ik = IdExprBool
 	default:
 		return nil, ggErrs.Runtime("invalid identifier %s at %d: ", t.Str, t.Start)
 	}

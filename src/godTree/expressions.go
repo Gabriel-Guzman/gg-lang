@@ -10,9 +10,10 @@ import (
 type IdExprKind int
 
 const (
-	IdExprNumber   = IdExprKind(ExprNumberLiteral)
-	IdExprString   = IdExprKind(ExprStringLiteral)
-	IdExprVariable = IdExprKind(ExprVariable)
+	IdExprNumber   IdExprKind = IdExprKind(ExprNumberLiteral)
+	IdExprString   IdExprKind = IdExprKind(ExprStringLiteral)
+	IdExprBool     IdExprKind = IdExprKind(ExprBoolLiteral)
+	IdExprVariable IdExprKind = IdExprKind(ExprVariable)
 )
 
 type Identifier struct {
@@ -110,6 +111,8 @@ func ExprString(e Expression, d int, sb *strings.Builder) {
 	case ExprVariable:
 		goto IdentifierStr
 	case ExprStringLiteral:
+		goto IdentifierStr
+	case ExprBoolLiteral:
 		goto IdentifierStr
 	case ExprFunctionCall:
 		val := e.(*FunctionCallExpression)
