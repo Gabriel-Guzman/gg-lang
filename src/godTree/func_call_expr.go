@@ -7,7 +7,7 @@ import (
 )
 
 // iter should be pointing to the opening parenthesis here
-func newFuncCallExpression(funcName *Identifier, iter *iterator.Iter[tokenizer.Token]) (ValueExpression, error) {
+func newFuncCallExpression(funcName *Identifier, iter *iterator.Iter[tokenizer.Token]) (IValExpr, error) {
 	nextTok, ok := iter.Peek()
 	if !ok {
 		return nil, ggErrs.Runtime("expected closing parenthesis ')' or args after function name\n%s", iter.String())
@@ -20,7 +20,7 @@ func newFuncCallExpression(funcName *Identifier, iter *iterator.Iter[tokenizer.T
 		}, nil
 	}
 
-	var args []ValueExpression
+	var args []IValExpr
 	for {
 		val, err := parseValueExpr(iter)
 		if err != nil {

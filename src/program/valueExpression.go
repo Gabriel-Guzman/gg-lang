@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-func (p *Program) evaluateValueExpr(expr godTree.ValueExpression) (*variables.RuntimeValue, error) {
+func (p *Program) evaluateValueExpr(expr godTree.IValExpr) (*variables.RuntimeValue, error) {
 	switch expr.Kind() {
 	case godTree.ExprVariable:
 		name := expr.(*godTree.Identifier).Name()
@@ -33,6 +33,7 @@ func (p *Program) evaluateValueExpr(expr godTree.ValueExpression) (*variables.Ru
 		}, nil
 	case godTree.ExprBinary:
 		binExp := expr.(*godTree.BinaryExpression)
+
 		left, err := p.evaluateValueExpr(binExp.Lhs)
 		if err != nil {
 			return nil, err
@@ -45,7 +46,7 @@ func (p *Program) evaluateValueExpr(expr godTree.ValueExpression) (*variables.Ru
 
 		op, exists := p.opMap.Get(binExp.Op, left.Typ, right.Typ)
 		if !exists {
-			return nil, ggErrs.Runtime("evaluateValueExpr: op %s not supported between types %v and %v", binExp.Op, left.Typ, right.Typ)
+			return nil, ggErrs.Runtime("evaluateValueExpr: op %s not supported between types %T and %T", binExp.Op, left.Typ, right.Typ)
 		}
 
 		value := op.Evaluate(left.Val, right.Val)

@@ -8,6 +8,7 @@ import (
 type Iter[T any] struct {
 	members   []T
 	curr      int
+	reverse   bool
 	Stringer  func(T) string
 	Separator string
 }
@@ -20,9 +21,29 @@ func (wi *Iter[T]) Index() int {
 	return wi.curr
 }
 
+func (wi *Iter[T]) Reverse() *Iter[T] {
+	reversed := wi.Copy()
+	reversed.reverse = !wi.reverse
+	return reversed
+}
+
 func (wi *Iter[T]) Copy() *Iter[T] {
 	newWords := wi.members[:]
-	return &Iter[T]{members: newWords, curr: wi.curr}
+	return &Iter[T]{
+		members:   newWords,
+		curr:      wi.curr,
+		Stringer:  wi.Stringer,
+		Separator: wi.Separator,
+		reverse:   wi.reverse,
+	}
+}
+
+func (wi *Iter[T]) nextIndex() int {
+	if wi.reverse {
+		return wi.curr - 1
+	} else {
+		return wi.curr + 1
+	}
 }
 
 func (wi *Iter[T]) String() string {
@@ -55,12 +76,15 @@ func (wi *Iter[T]) Current() T {
 	return wi.members[wi.curr]
 }
 func (wi *Iter[T]) HasCurrent() bool {
+	return wi.hasIndex(wi.curr)
+}
+func (wi *Iter[T]) hasIndex(index int) bool {
 	return wi.curr >= 0 && wi.curr < len(wi.members)
 }
 
 func (wi *Iter[T]) Next() (T, bool) {
-	wi.curr++
-	if wi.curr >= len(wi.members) {
+	wi.curr = wi.nextIndex()
+	if !wi.hasIndex(wi.curr) {
 		var ret T
 		return ret, false
 	}
@@ -70,27 +94,45 @@ func (wi *Iter[T]) Next() (T, bool) {
 }
 
 func (wi *Iter[T]) HasNext() bool {
-	return (wi.curr + 1) < len(wi.members)
+	return wi.hasIndex(wi.nextIndex())
+}
+
+func (wi *Iter[T]) End() {
+	if wi.reverse {
+		wi.curr = -1
+		return
+	}
+	wi.curr = len(wi.members)
 }
 
 func (wi *Iter[T]) Reset() {
+	if wi.reverse {
+		wi.curr = len(wi.members)
+		return
+	}
 	wi.curr = -1
 }
 
 func (wi *Iter[T]) Peek() (T, bool) {
-	if (wi.curr + 1) >= len(wi.members) {
+	if !wi.HasNext() {
 		var ret T
 		return ret, false
 	}
-	return wi.members[wi.curr+1], true
+	return wi.members[wi.nextIndex()], true
 }
 
 func (wi *Iter[T]) Prev() (T, bool) {
-	if wi.curr <= 0 {
+	var prevIndex int
+	if wi.reverse {
+		prevIndex = wi.curr + 1
+	} else {
+		prevIndex = wi.curr - 1
+	}
+	if !wi.hasIndex(prevIndex) {
 		var ret T
 		return ret, false
 	}
-	return wi.members[wi.curr-1], true
+	return wi.members[prevIndex], true
 }
 
 func (wi *Iter[T]) Len() int {

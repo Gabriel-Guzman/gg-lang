@@ -65,7 +65,7 @@ func main() {
 	err = sess.Run(ast)
 	handle(err)
 
-	fmt.Printf("\nProgram:\n%s\n", sess.String())
+	//fmt.Printf("\nProgram:\n%s\n", sess.String())
 	tree, err := json.MarshalIndent(ast, "", "    ")
 	handle(err)
 

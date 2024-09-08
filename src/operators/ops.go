@@ -61,3 +61,36 @@ func Default() *OpMap {
 
 	return opm
 }
+
+var PrecedenceMap map[string]int = map[string]int{
+	"*": 2,
+	"/": 2,
+	"+": 1,
+	"-": 1,
+}
+
+func LeftFirst(l, r string) bool {
+	pl, ok := PrecedenceMap[l]
+	if !ok {
+		panic(fmt.Sprintf("checked precedence on nonexistent op %s or %s", l, r))
+	}
+	rl, ok := PrecedenceMap[r]
+	if !ok {
+		panic(fmt.Sprintf("checked precedence on nonexistent op %s or %s", l, r))
+	}
+
+	if pl == rl {
+		return true
+	}
+
+	return pl > rl
+}
+
+//func PrecedenceMap() map[string]int {
+//	return map[string]int{
+//		"+": 1,
+//		"-": 1,
+//		"*": 2,
+//		"/": 2,
+//	}
+//}

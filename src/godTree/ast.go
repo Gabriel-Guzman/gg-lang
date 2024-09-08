@@ -3,6 +3,7 @@ package godTree
 import (
 	"gg-lang/src/ggErrs"
 	"gg-lang/src/iterator"
+	"gg-lang/src/operators"
 	"gg-lang/src/tokenizer"
 	"strings"
 )
@@ -191,7 +192,11 @@ func parseStmt(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
 	// not assign, its value. this could be a lone expression i.e. "swag";
 	tokIter.Reset()
 	expr, err := parseValueExpr(tokIter)
-	return expr, err
+	if err != nil {
+		return nil, err
+	}
+
+	return expr, nil
 }
 
 // tokIter should be pointing to the token right before the value expression
@@ -206,60 +211,121 @@ func parseAssignmentExpr(id *Identifier, tokIter *iterator.Iter[tokenizer.Token]
 }
 
 // tokIter should be pointing to the token right before the value expression
-func parseValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (ValueExpression, error) {
+func parseValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (IValExpr, error) {
 	// first word in value
-	curr, exists := tokIter.Next()
-
-	if curr.TokenType.IsOperator() {
-		return nil, ggErrs.Runtime("unexpected op %s at %d", curr.Str, curr.Start)
+	firstExpr, err := parseSingleValueExpr(tokIter)
+	if err != nil {
+		return nil, err
 	}
 
-	firstId, err := newIdentifier(curr)
+	// tokIter is currently at the closing parenthesis ')'
+	// go to tok after that
+	afterParen, ok := tokIter.Next()
+	if !ok {
+		return firstExpr, nil
+	}
+
+	// operator, try for binary expression
+	if afterParen.TokenType.IsOperator() {
+		if afterParen.TokenType == tokenizer.RAssign {
+			return nil, ggErrs.Runtime("invalid = in value expression: %s", tokIter.String())
+		}
+
+		binaryExpr, err := parseBinaryExpression(firstExpr, afterParen.Str, tokIter)
+		if err != nil {
+			return nil, err
+		}
+		return binaryExpr, nil
+	}
+	return firstExpr, nil
+}
+
+// iter should be pointing to right before the first tok in the value expression
+func parseSingleValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (IValExpr, error) {
+	// first word in value
+	firstTok, exists := tokIter.Next()
+
+	if firstTok.TokenType.IsOperator() {
+		return nil, ggErrs.Runtime("unexpected op %s at %d", firstTok.Str, firstTok.Start)
+	}
+
+	firstId, err := newIdentifier(firstTok)
 	if err != nil {
 		return nil, err
 	}
 
 	// try for next word
-	token2, exists := tokIter.Next()
+	nextTok, exists := tokIter.Peek()
 	if !exists {
 		// no next word, return identifier
 		return firstId, nil
 	}
 
-	var firstExpr ValueExpression
+	var firstExpr IValExpr
 	firstExpr = firstId
 	// try for function call
-	if token2.TokenType == tokenizer.ROpenParen {
+	if nextTok.TokenType == tokenizer.ROpenParen {
 		funcName := firstId
+		// point to the opening parenthesis
+		tokIter.Next()
 		firstExpr, err = newFuncCallExpression(funcName, tokIter)
 		if err != nil {
 			return nil, err
 		}
-		// tokIter is currently at the closing parenthesis ')'
-		// if there's something next, it could be an operator
-		_, ok := tokIter.Next()
-		if !ok {
-			return firstExpr, nil
-		}
 	}
 
-	// operator, try for binary expression
-	if token2.TokenType.IsOperator() {
-		if token2.TokenType == tokenizer.RAssign {
-			return nil, ggErrs.Runtime("invalid = in value expression: %s", tokIter.String())
-		}
-
-		lhs := firstExpr
-		op := token2.Str
-		rhs, err := parseValueExpr(tokIter)
-		if err != nil {
-			return nil, err
-		}
-
-		return newBinaryExpression(lhs, op, rhs), nil
-
-	}
 	return firstExpr, nil
+}
+
+// iter should be pointing to right before the second expression after the first operator
+// returns a bin expression ready to be walked with operator precedence
+func parseBinaryExpression(
+	firstSingleValueExpr IValExpr,
+	op string,
+	tokIter *iterator.Iter[tokenizer.Token],
+) (*BinaryExpression, error) {
+	secondExpr, err := parseSingleValueExpr(tokIter)
+	if err != nil {
+		return nil, err
+	}
+
+	firstBinaryExpr := &BinaryExpression{
+		Lhs: firstSingleValueExpr,
+		Op:  op,
+		Rhs: secondExpr,
+	}
+
+	mbOp, ok := tokIter.Peek()
+	if !ok {
+		return firstBinaryExpr, nil
+	}
+	if !mbOp.TokenType.IsOperator() {
+		return nil, ggErrs.Runtime("unexpected token %s", tokIter.String())
+	}
+
+	tokIter.Next() // consume the operator token
+
+	secondBinExpr, err := parseBinaryExpression(secondExpr, mbOp.Str, tokIter)
+	if err != nil {
+		return nil, err
+	}
+
+	// note firstBinaryExpr.Rhs == secondBinExpr.Lhs
+	if operators.LeftFirst(firstBinaryExpr.Op, secondBinExpr.Op) {
+		// firstBinaryExpr should go before mbOp, so deeper in the tree than it
+		return &BinaryExpression{
+			Lhs: firstBinaryExpr,
+			Op:  secondBinExpr.Op,
+			Rhs: secondBinExpr.Rhs,
+		}, nil
+	} else {
+		//firstBinaryExpr should go after mbOp, so shallower in the tree than it
+		return &BinaryExpression{
+			Lhs: firstBinaryExpr.Lhs,
+			Op:  firstBinaryExpr.Op,
+			Rhs: secondBinExpr,
+		}, nil
+	}
 }
 
 func newIdentifier(t tokenizer.Token) (*Identifier, error) {
