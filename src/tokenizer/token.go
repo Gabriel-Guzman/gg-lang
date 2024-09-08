@@ -56,6 +56,9 @@ func (t TokenType) IsSeparator() bool {
 func (t TokenType) IsIdentifier() bool {
 	return t > beginIdentifiers && t < endIdentifiers
 }
+func (t TokenType) IsMathOperator() bool {
+	return t == RPlus || t == RMinus || t == RMul || t == RDiv
+}
 
 type token string
 

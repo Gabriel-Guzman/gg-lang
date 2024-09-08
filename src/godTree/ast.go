@@ -284,28 +284,38 @@ func parseSingleValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (IValExpr, er
 func parseBinaryExpression(
 	tokIter *iterator.Iter[tokenizer.Token],
 ) (*BinaryExpression, error) {
-	secondExpr, err := parseSingleValueExpr(tokIter)
+	firstSingleValueExpr, err := parseSingleValueExpr(tokIter)
+
+	mbOp1, ok := tokIter.Next()
+	if !ok {
+		return nil, ggErrs.Runtime("unexpected end of token iter in binary expression\n%s", tokIter.String())
+	}
+	if !mbOp1.TokenType.IsMathOperator() {
+		return nil, ggErrs.Runtime("unexpected token %s", tokIter.String())
+	}
+
+	secondSingleValueExpr, err := parseSingleValueExpr(tokIter)
 	if err != nil {
 		return nil, err
 	}
 
 	firstBinaryExpr := &BinaryExpression{
 		Lhs: firstSingleValueExpr,
-		Op:  op,
-		Rhs: secondExpr,
+		Op:  mbOp1.Str,
+		Rhs: secondSingleValueExpr,
 	}
 
 	mbOp, ok := tokIter.Peek()
 	if !ok {
 		return firstBinaryExpr, nil
 	}
-	if !mbOp.TokenType.IsOperator() {
+	if !mbOp.TokenType.IsMathOperator() {
 		return nil, ggErrs.Runtime("unexpected token %s", tokIter.String())
 	}
 
 	tokIter.Next() // consume the operator token
 
-	secondBinExpr, err := parseBinaryExpression(secondExpr, mbOp.Str, tokIter)
+	secondBinExpr, err := parseBinaryExpression(secondSingleValueExpr, mbOp.Str, tokIter)
 	if err != nil {
 		return nil, err
 	}
