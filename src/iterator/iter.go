@@ -27,10 +27,10 @@ func (wi *Iter[T]) Reverse() *Iter[T] {
 	return reversed
 }
 
+// modifying the members in the copy will affect the original iterator members
 func (wi *Iter[T]) Copy() *Iter[T] {
-	newWords := wi.members[:]
 	return &Iter[T]{
-		members:   newWords,
+		members:   wi.members,
 		curr:      wi.curr,
 		Stringer:  wi.Stringer,
 		Separator: wi.Separator,
@@ -79,7 +79,7 @@ func (wi *Iter[T]) HasCurrent() bool {
 	return wi.hasIndex(wi.curr)
 }
 func (wi *Iter[T]) hasIndex(index int) bool {
-	return wi.curr >= 0 && wi.curr < len(wi.members)
+	return index >= 0 && index < len(wi.members)
 }
 
 func (wi *Iter[T]) Next() (T, bool) {

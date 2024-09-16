@@ -42,6 +42,8 @@ const (
 	beginKeywords
 	Function
 	endKeywords
+
+	MathOperatorMask = RPlus | RMinus | RMul | RDiv
 )
 
 func (t TokenType) IsOperator() bool {
@@ -57,7 +59,7 @@ func (t TokenType) IsIdentifier() bool {
 	return t > beginIdentifiers && t < endIdentifiers
 }
 func (t TokenType) IsMathOperator() bool {
-	return t == RPlus || t == RMinus || t == RMul || t == RDiv
+	return t&MathOperatorMask != 0
 }
 
 type token string
