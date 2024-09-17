@@ -13,7 +13,6 @@ const (
 )
 
 type Variable struct {
-	Name string
-	//Typ   VarType
+	Name  string
 	Value *RuntimeValue
 }

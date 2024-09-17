@@ -155,7 +155,7 @@ func TokenizeRunes(ins []rune) ([][]Token, error) {
 			} else {
 				stmt = append(stmt, vr)
 			}
-		case uni.IsDigit(curr):
+		case uni.IsDigit(curr) || curr == '-':
 			tok, err := numLiteral(iter)
 			if err != nil {
 				return nil, err
@@ -222,6 +222,13 @@ func numLiteral(iter *iterator.Iter[rune]) (Token, error) {
 	start := iter.Index()
 	num := []rune{iter.Current()}
 	next, ok := iter.Peek()
+	//negative := false
+	if next == '-' {
+		//negative = true
+		num = append([]rune{'-'}, num...)
+		_, ok = iter.Next() // consume the '-'
+		next, ok = iter.Peek()
+	}
 
 loop:
 	for ok {
