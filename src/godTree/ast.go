@@ -228,6 +228,7 @@ func parseValueExpr(iter *iterator.Iter[tokenizer.Token]) (IValExpr, error) {
 		}
 
 		// point to the first identifier in the binary expression
+		iter.Reset()
 		binaryExpr, err := parseBinaryExpression(beginning)
 		if err != nil {
 			return nil, err
@@ -282,44 +283,92 @@ func parseSingleValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (IValExpr, er
 func parseBinaryExpression(
 	tokIter *iterator.Iter[tokenizer.Token],
 ) (IValExpr, error) {
-	currentLhs, err := parseSingleValueExpr(tokIter)
+	lhsSve, err := parseSingleValueExpr(tokIter)
 	if err != nil {
 		return nil, err
 	}
 
-	mbOp1, ok := tokIter.Next()
+	op, ok := tokIter.Next()
 	if !ok {
-		return currentLhs, nil
+		return lhsSve, nil
 	}
-	if !mbOp1.TokenType.IsMathOperator() {
+	if !op.TokenType.IsMathOperator() {
 		return nil, ggErrs.Runtime("expected operator, got %s", tokIter.String())
 	}
 
-	rest, err := parseBinaryExpression(tokIter)
+	rhs, err := parseSingleValueExpr(tokIter)
 	if err != nil {
 		return nil, err
 	}
-	if restBin, ok := rest.(*BinaryExpression); ok {
-		if operators.LeftFirst(mbOp1.Str, restBin.Op) {
-			res := &BinaryExpression{
-				Lhs: currentLhs,
-				Op:  mbOp1.Str,
-				Rhs: restBin.Lhs,
-			}
 
-			return &BinaryExpression{
-				Lhs: res,
-				Op:  restBin.Op,
-				Rhs: restBin.Rhs,
-			}, nil
+	lhs := &BinaryExpression{
+		Lhs: lhsSve,
+		Op:  op.Str,
+		Rhs: rhs,
+	}
+	for {
+		op, ok := tokIter.Next()
+		if !ok {
+			break
+		}
+		if !op.TokenType.IsMathOperator() {
+			break
+		}
+
+		rhs, err := parseSingleValueExpr(tokIter)
+		if err != nil {
+			return nil, err
+		}
+
+		if operators.LeftFirst(lhs.Op, op.Str) {
+			lhs = &BinaryExpression{
+				Lhs: lhs,
+				Op:  op.Str,
+				Rhs: rhs,
+			}
+		} else {
+			lhs.Rhs = &BinaryExpression{
+				Lhs: lhs.Rhs,
+				Op:  op.Str,
+				Rhs: rhs,
+			}
 		}
 	}
 
-	return &BinaryExpression{
-		Lhs: currentLhs,
-		Op:  mbOp1.Str,
-		Rhs: rest,
-	}, nil
+	return lhs, nil
+	//lhs, err := parseSingleValueExpr(tokIter)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//op, ok := tokIter.Next()
+	//if !ok {
+	//	return lhs, nil
+	//}
+	//if !op.TokenType.IsMathOperator() {
+	//	return nil, ggErrs.Runtime("expected operator, got %s", tokIter.String())
+	//}
+
+	//rest, err := parseBinaryExpression(tokIter)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//if restBin, ok := rest.(*BinaryExpression); ok {
+	//	if operators.LeftFirst(op.Str, restBin.Op) {
+	//		lhs = &BinaryExpression{
+	//			Lhs: lhs,
+	//			Op:  op.Str,
+	//			Rhs: restBin.Rhs,
+	//		}
+	//	} else {
+	//	}
+	//}
+	//
+	//return &BinaryExpression{
+	//	Lhs: lhs,
+	//	Op:  op.Str,
+	//	Rhs: rest,
+	//}, nil
 }
 
 func addLhsAndBalance(lhsExpr IValExpr, mbOp1 string, restBin *BinaryExpression) *BinaryExpression {
