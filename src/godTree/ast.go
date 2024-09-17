@@ -57,25 +57,23 @@ outer:
 		if err != nil {
 			return err
 		}
-		// trap for function declaration
-		if casted, ok := expr.(*FunctionDeclExpression); ok {
-			for {
-				ok = a.nextStmt()
-				if !ok {
-					return ggErrs.Runtime("missing } in function decl\n%s", a.tokIter.String())
-				}
-
-				err := a.funcTrap(casted)
-				if err != nil {
-					return err
-				}
-				continue outer
-			}
-		}
-
 		if a.tokIter.HasNext() {
 			return ggErrs.Runtime("couldnt finish parsing statement\n%s", a.tokIter.String())
 		}
+		// trap for function declaration
+		if casted, ok := expr.(*FunctionDeclExpression); ok {
+			ok = a.nextStmt()
+			if !ok {
+				return ggErrs.Runtime("missing } in function decl\n%s", a.tokIter.String())
+			}
+
+			err := a.funcTrap(casted)
+			if err != nil {
+				return err
+			}
+			continue outer
+		}
+
 		a.Body = append(a.Body, expr)
 	}
 	return nil
@@ -116,7 +114,7 @@ func newIdentifier(t tokenizer.Token) (*Identifier, error) {
 	case tokenizer.FalseLiteral:
 		ik = IdExprBool
 	default:
-		return nil, ggErrs.Runtime("invalid identifier %s at %d: ", t.Str, t.Start)
+		return nil, ggErrs.Runtime("invalid identifier %s", t.Str)
 	}
 	return &Identifier{Raw: t.Str, idKind: ik}, nil
 }

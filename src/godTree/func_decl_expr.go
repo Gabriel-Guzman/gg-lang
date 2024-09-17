@@ -14,7 +14,7 @@ func parseFuncDecl(tokIter *iterator.Iter[tokenizer.Token]) (*FunctionDeclExpres
 
 	id, err := newIdentifier(mbIdent)
 	if err != nil {
-		return nil, err
+		return nil, ggErrs.Runtime("Invalid identifier\n%s", tokIter.String())
 	}
 
 	mbOpenParen, ok := tokIter.Next()

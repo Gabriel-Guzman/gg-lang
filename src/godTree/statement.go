@@ -105,7 +105,7 @@ func parseSingleValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (IValExpr, er
 			if err != nil {
 				return nil, err
 			}
-			
+
 			return &BinaryExpression{
 				Lhs: &Identifier{
 					Raw:    "-1",
@@ -120,7 +120,7 @@ func parseSingleValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (IValExpr, er
 
 	firstId, err := newIdentifier(firstTok)
 	if err != nil {
-		return nil, err
+		return nil, ggErrs.Runtime("could not parse identifier\n%s", tokIter.String())
 	}
 
 	// try for next word

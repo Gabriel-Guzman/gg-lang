@@ -135,7 +135,7 @@ func TokenizeRunes(ins []rune) ([][]Token, error) {
 			}
 
 			stmt = append(stmt, newToken(iter, opt))
-			if opt == ROpenBrace {
+			if opt == ROpenBrace || opt == RCloseBrace {
 				stmts = append(stmts, stmt)
 				stmt = nil
 				break sw_stmt
