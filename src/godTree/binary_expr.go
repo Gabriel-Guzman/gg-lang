@@ -13,6 +13,7 @@ import (
 func parseBinaryExpression(
 	tokIter *iterator.Iter[tokenizer.Token],
 ) (IValExpr, error) {
+	// begin building the initial binary expression if it exists
 	lhsSve, err := parseSingleValueExpr(tokIter)
 	if err != nil {
 		return nil, err
@@ -51,6 +52,7 @@ func parseBinaryExpression(
 		}
 
 		if operators.LeftFirst(lhs.Op, op.Str) {
+			// left needs to be evaluated first and therefor deeper into the tree
 			lhs = &BinaryExpression{
 				Lhs: lhs,
 				Op:  op.Str,

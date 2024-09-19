@@ -62,7 +62,7 @@ func Default() *OpMap {
 	return opm
 }
 
-var PrecedenceMap map[string]int = map[string]int{
+var PrecedenceMap = map[string]int{
 	"*": 2,
 	"/": 2,
 	"+": 1,

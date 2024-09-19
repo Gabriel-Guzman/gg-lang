@@ -187,7 +187,7 @@ func parseFuncDecl(tokIter *iterator.Iter[tokenizer.Token]) (*FunctionDeclExpres
 
 	return &FunctionDeclExpression{
 		Target: *id,
-		Parms:  parms,
+		Params: parms,
 		Value:  nil,
 	}, nil
 }

@@ -10,7 +10,7 @@ import (
 type TokenType int
 
 const (
-	beginOperators TokenType = 1 << iota
+	beginOperators TokenType = iota
 	RPlus
 	RMinus
 	RMul
@@ -23,6 +23,7 @@ const (
 	RCloseParen
 	ROpenBrace
 	RCloseBrace
+	RQuote
 	endContainers
 
 	beginSeparators
@@ -33,7 +34,7 @@ const (
 
 	beginIdentifiers
 	Var
-	NumberLiteral
+	IntLiteral
 	StringLiteral
 	TrueLiteral
 	FalseLiteral
@@ -42,8 +43,6 @@ const (
 	beginKeywords
 	Function
 	endKeywords
-
-	MathOperatorMask = RPlus | RMinus | RMul | RDiv
 )
 
 func (t TokenType) IsOperator() bool {
@@ -59,12 +58,18 @@ func (t TokenType) IsIdentifier() bool {
 	return t > beginIdentifiers && t < endIdentifiers
 }
 func (t TokenType) IsMathOperator() bool {
-	return t&MathOperatorMask != 0
+	return t == RPlus || t == RMinus || t == RMul || t == RDiv
 }
 
-type token string
+func (t TokenType) String() string {
+	if s, ok := reservedTokens[t]; ok {
+		return s
+	}
+	return fmt.Sprintf("TokenType(%d)", t)
+}
 
-var reservedTokens = map[TokenType]token{
+var reservedTokens = map[TokenType]string{
+	// operators
 	RPlus:   "+",
 	RMinus:  "-",
 	RMul:    "*",
@@ -72,22 +77,30 @@ var reservedTokens = map[TokenType]token{
 	RTerm:   ";",
 	RAssign: "=",
 
-	ROpenParen:   "(",
-	RCloseParen:  ")",
-	ROpenBrace:   "{",
-	RCloseBrace:  "}",
-	RComma:       ",",
-	RSpace:       " ",
-	Function:     "routine",
+	// containers
+	ROpenParen:  "(",
+	RCloseParen: ")",
+	ROpenBrace:  "{",
+	RCloseBrace: "}",
+	RQuote:      "\"",
+
+	// separators
+	RComma: ",",
+	RSpace: " ",
+
+	// built-in literals
 	TrueLiteral:  "true",
 	FalseLiteral: "false",
+
+	// keyword
+	Function: "routine",
 }
 
 var reservedTokensMap = map[string]TokenType{}
 
 func init() {
 	for i, c := range reservedTokens {
-		reservedTokensMap[string(c)] = i
+		reservedTokensMap[c] = i
 	}
 }
 
@@ -125,25 +138,35 @@ func TokenizeRunes(ins []rune) ([][]Token, error) {
 	for ok {
 	sw_stmt:
 		switch {
+		// fully ignore spaces
 		case uni.IsSpace(curr):
 		case isReserved(string(curr)):
+			// checking for reserved single rune
 			opt := lookup(string(curr))
+			// semicolon, instakill statement
 			if opt == RTerm {
 				stmts = append(stmts, stmt)
 				stmt = nil
 				break sw_stmt
 			}
 
-			stmt = append(stmt, newToken(iter, opt))
+			// if non-semicolon but still reserved, add to current statement
+			// TODO impl parseOperator here to handle ops longer than 1 rune
+			stmt = append(stmt, newSingleRuneToken(iter, opt))
+
+			// if what we added was { or }, end the statement
 			if opt == ROpenBrace || opt == RCloseBrace {
 				stmts = append(stmts, stmt)
 				stmt = nil
-				break sw_stmt
 			}
 		case uni.IsLetter(curr):
+			// track start, end for token struct
 			start := iter.Index()
+			// parse entire token expecting a variable
 			vr := variable(iter)
 			end := iter.Index()
+
+			// checking for reserved tokens longer than 1 rune
 			if isReserved(vr.Str) {
 				opt := lookup(vr.Str)
 				stmt = append(stmt, Token{
@@ -155,18 +178,19 @@ func TokenizeRunes(ins []rune) ([][]Token, error) {
 			} else {
 				stmt = append(stmt, vr)
 			}
-		case uni.IsDigit(curr) || curr == '-':
+		case uni.IsDigit(curr):
+			// NOTE: unary minus is not caught here and is instead parsed as -1 * x later
 			tok, err := numLiteral(iter)
 			if err != nil {
 				return nil, err
 			}
 			stmt = append(stmt, tok)
-		case curr == '"':
+		case string(curr) == RQuote.String():
 			_, ok = iter.Next() // consume the opening quote
 			if !ok {
 				return nil, ggErrs.Runtime("unterminated string literal")
 			}
-			tok, err := stringLiteral(iter)
+			tok, err := parseStringLiteral(iter)
 			if err != nil {
 				return nil, ggErrs.Runtime("invalid character %c in string literal", curr)
 			}
@@ -183,7 +207,7 @@ func TokenizeRunes(ins []rune) ([][]Token, error) {
 	return stmts, nil
 }
 
-func newToken(iter *iterator.Iter[rune], tokenType TokenType) Token {
+func newSingleRuneToken(iter *iterator.Iter[rune], tokenType TokenType) Token {
 	start := iter.Index()
 	ret := Token{
 		Start:     start,
@@ -194,7 +218,7 @@ func newToken(iter *iterator.Iter[rune], tokenType TokenType) Token {
 	return ret
 }
 
-func stringLiteral(iter *iterator.Iter[rune]) (Token, error) {
+func parseStringLiteral(iter *iterator.Iter[rune]) (Token, error) {
 	start := iter.Index()
 	str := []rune{iter.Current()}
 
@@ -216,15 +240,13 @@ func stringLiteral(iter *iterator.Iter[rune]) (Token, error) {
 	}, nil
 }
 
+// parses a number literal.
+// currently, only number runes are supported (no decimal, scientific notation, etc.)
+// iter points to the first rune of the number
 func numLiteral(iter *iterator.Iter[rune]) (Token, error) {
 	start := iter.Index()
 	num := []rune{iter.Current()}
 	next, ok := iter.Peek()
-	if next == '-' {
-		num = append([]rune{'-'}, num...)
-		_, ok = iter.Next() // consume the '-'
-		next, ok = iter.Peek()
-	}
 
 loop:
 	for ok {
@@ -244,15 +266,17 @@ loop:
 		Start:     start,
 		End:       iter.Index(),
 		Str:       string(num),
-		TokenType: NumberLiteral,
+		TokenType: IntLiteral,
 	}, nil
 }
 
-// assume rune is not the first rune of the identifier
+// this checks runes with index in identifier > 0,
+// the first rune is always a letter at this point
 func idRune(r rune) bool {
 	return uni.IsLetter(r) || uni.IsDigit(r) || r == '_'
 }
 
+// parse an entire identifier token
 func variable(iter *iterator.Iter[rune]) Token {
 	start := iter.Index()
 	id := []rune{iter.Current()}
@@ -264,7 +288,7 @@ func variable(iter *iterator.Iter[rune]) Token {
 		}
 		id = append(id, next)
 
-		_, _ = iter.Next() // consume the next rune we just checked
+		iter.Next() // consume the next rune we just checked
 		next, ok = iter.Peek()
 	}
 

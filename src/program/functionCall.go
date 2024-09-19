@@ -37,7 +37,7 @@ func (p *Program) funcCall(f *godTree.FunctionCallExpression) error {
 
 	// set up func expression
 	funcDeclExpr := variable.Value.Val.(*godTree.FunctionDeclExpression)
-	if len(funcDeclExpr.Parms) != len(f.Args) {
+	if len(funcDeclExpr.Params) != len(f.Args) {
 		return ggErrs.Runtime("param count mismatch on", f.Id.Raw)
 	}
 
@@ -46,7 +46,7 @@ func (p *Program) funcCall(f *godTree.FunctionCallExpression) error {
 	for i := range f.Args {
 		value := vals[i]
 
-		name := funcDeclExpr.Parms[i]
+		name := funcDeclExpr.Params[i]
 
 		scopedVariables = append(scopedVariables, variables.Variable{
 			Name:  name,

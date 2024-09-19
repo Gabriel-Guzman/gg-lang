@@ -16,7 +16,7 @@ func (p *Program) evaluateValueExpr(expr godTree.IValExpr) (*variables.RuntimeVa
 			return v.Value, nil
 		}
 		return nil, ggErrs.Runtime("undefined variable: %s", name)
-	case godTree.ExprNumberLiteral:
+	case godTree.ExprIntLiteral:
 		name := expr.(*godTree.Identifier).Name()
 		intVal, err := strconv.Atoi(name)
 		if err != nil {
@@ -58,13 +58,13 @@ func (p *Program) evaluateValueExpr(expr godTree.IValExpr) (*variables.RuntimeVa
 		}, nil
 	case godTree.ExprFunctionCall:
 		f := expr.(*godTree.FunctionCallExpression)
-		if err2 := p.funcCall(f); err2 != nil {
+		if err := p.funcCall(f); err != nil {
 			return &variables.RuntimeValue{
 				Val: nil,
 				Typ: variables.Void,
 			}, nil
 		} else {
-			return nil, err2
+			return nil, err
 		}
 	default:
 		return nil, ggErrs.Crit("evaluateValueExpr: invalid expression type: %v", expr)

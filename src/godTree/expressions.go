@@ -10,7 +10,7 @@ import (
 type IdExprKind int
 
 const (
-	IdExprNumber   = IdExprKind(ExprNumberLiteral)
+	IdExprNumber   = IdExprKind(ExprIntLiteral)
 	IdExprString   = IdExprKind(ExprStringLiteral)
 	IdExprBool     = IdExprKind(ExprBoolLiteral)
 	IdExprVariable = IdExprKind(ExprVariable)
@@ -72,7 +72,7 @@ func newAssignmentExpression(target *Identifier, value IValExpr) *AssignmentExpr
 // routine a(b, c) {
 type FunctionDeclExpression struct {
 	Target Identifier
-	Parms  []string
+	Params []string
 	Value  []Expression
 }
 
@@ -107,7 +107,7 @@ func ExprString(e Expression, d int, sb *strings.Builder) {
 		sb.WriteString("\n")
 		w(val.Op)
 		ExprString(val.Rhs, d+1, sb)
-	case ExprNumberLiteral:
+	case ExprIntLiteral:
 		fallthrough
 	case ExprVariable:
 		fallthrough
@@ -124,7 +124,7 @@ func ExprString(e Expression, d int, sb *strings.Builder) {
 		}
 	case ExprFuncDecl:
 		val := e.(*FunctionDeclExpression)
-		w("decl of " + val.Target.Name() + fmt.Sprintf("(%s)\n", strings.Join(val.Parms, ", ")))
+		w("decl of " + val.Target.Name() + fmt.Sprintf("(%s)\n", strings.Join(val.Params, ", ")))
 		w(" to do")
 		for _, expr := range val.Value {
 			ExprString(expr, d+1, sb)

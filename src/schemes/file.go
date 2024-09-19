@@ -10,6 +10,7 @@ import (
 	"os"
 )
 
+// execute a GG program from a file and output the AST to a file
 func Exec(filename string) {
 	fmt.Println("Reading file:", filename)
 	out, err := os.ReadFile(filename)

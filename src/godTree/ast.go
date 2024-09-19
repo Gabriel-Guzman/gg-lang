@@ -99,7 +99,7 @@ func (a *Ast) funcTrap(casted *FunctionDeclExpression) error {
 func newIdentifier(t tokenizer.Token) (*Identifier, error) {
 	var ik IdExprKind
 	switch t.TokenType {
-	case tokenizer.NumberLiteral:
+	case tokenizer.IntLiteral:
 		ik = IdExprNumber
 	case tokenizer.Var:
 		ik = IdExprVariable
