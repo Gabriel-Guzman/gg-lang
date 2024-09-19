@@ -43,10 +43,6 @@ func tokStringer(t tokenizer.Token) string {
 func (a *Ast) ParseStmts(tokens [][]tokenizer.Token) error {
 	a.stmtIter = iterator.New(tokens)
 
-	var currStmt []tokenizer.Token
-	a.tokIter = iterator.New(currStmt)
-	a.tokIter.Stringer = tokStringer
-
 outer:
 	for {
 		ok := a.nextStmt()

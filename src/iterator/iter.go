@@ -17,6 +17,10 @@ func New[T any](words []T) *Iter[T] {
 	return &Iter[T]{members: words, curr: -1, Separator: " "}
 }
 
+func (wi *Iter[T]) SetIndex(index int) {
+	wi.curr = index
+}
+
 func (wi *Iter[T]) Index() int {
 	return wi.curr
 }

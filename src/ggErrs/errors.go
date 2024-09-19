@@ -10,7 +10,7 @@ type ChillErr struct {
 }
 
 func (err *ChillErr) Error() string {
-	return fmt.Sprintf("ChillErr: %s", err.Message)
+	return err.Message
 }
 
 func Runtime(msg string, args ...interface{}) *ChillErr {
@@ -22,7 +22,7 @@ type CritErr struct {
 }
 
 func (err *CritErr) Error() string {
-	return fmt.Sprintf("CritErr: %s", err.msg)
+	return err.msg
 }
 
 func Crit(msg string, args ...interface{}) *CritErr {

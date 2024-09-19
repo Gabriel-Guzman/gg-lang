@@ -10,10 +10,10 @@ import (
 type IdExprKind int
 
 const (
-	IdExprNumber   IdExprKind = IdExprKind(ExprNumberLiteral)
-	IdExprString   IdExprKind = IdExprKind(ExprStringLiteral)
-	IdExprBool     IdExprKind = IdExprKind(ExprBoolLiteral)
-	IdExprVariable IdExprKind = IdExprKind(ExprVariable)
+	IdExprNumber   = IdExprKind(ExprNumberLiteral)
+	IdExprString   = IdExprKind(ExprStringLiteral)
+	IdExprBool     = IdExprKind(ExprBoolLiteral)
+	IdExprVariable = IdExprKind(ExprVariable)
 )
 
 type Identifier struct {
@@ -55,7 +55,7 @@ type FunctionCallExpression struct {
 func (fce *FunctionCallExpression) Name() string         { return fce.Id.Name() }
 func (fce *FunctionCallExpression) Kind() ExpressionKind { return ExprFunctionCall }
 
-// a 32
+// a = 32
 type AssignmentExpression struct {
 	Target Identifier
 	Value  IValExpr
@@ -69,6 +69,7 @@ func newAssignmentExpression(target *Identifier, value IValExpr) *AssignmentExpr
 	}
 }
 
+// routine a(b, c) {
 type FunctionDeclExpression struct {
 	Target Identifier
 	Parms  []string
@@ -107,13 +108,14 @@ func ExprString(e Expression, d int, sb *strings.Builder) {
 		w(val.Op)
 		ExprString(val.Rhs, d+1, sb)
 	case ExprNumberLiteral:
-		goto IdentifierStr
+		fallthrough
 	case ExprVariable:
-		goto IdentifierStr
+		fallthrough
 	case ExprStringLiteral:
-		goto IdentifierStr
+		fallthrough
 	case ExprBoolLiteral:
-		goto IdentifierStr
+		id := e.(*Identifier)
+		w("Ident " + id.idKind.String() + " " + id.Raw)
 	case ExprFunctionCall:
 		val := e.(*FunctionCallExpression)
 		w("call to " + val.Id.Name())
@@ -131,8 +133,4 @@ func ExprString(e Expression, d int, sb *strings.Builder) {
 		panic(fmt.Sprintf("unknown expression type: %T", e))
 	}
 	return
-
-IdentifierStr:
-	id := e.(*Identifier)
-	w("Ident " + id.idKind.String() + " " + id.Raw)
 }

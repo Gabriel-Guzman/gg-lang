@@ -6,6 +6,7 @@ import (
 	"gg-lang/src/ggErrs"
 	"gg-lang/src/godTree"
 	"gg-lang/src/operators"
+	"gg-lang/src/tokenizer"
 	"gg-lang/src/variables"
 	"os"
 	"strings"
@@ -37,7 +38,6 @@ func New() *Program {
 	top := &Scope{variables: make(map[string]*variables.Variable)}
 
 	for _, fn := range builtin.Defaults() {
-		//top.variables[fn.Name()]] = newV
 		top.variables[fn.Name()] = &variables.Variable{
 			Name: fn.Name(),
 			Value: &variables.RuntimeValue{
@@ -52,6 +52,26 @@ func New() *Program {
 		current: top,
 		opMap:   operators.Default(),
 	}
+}
+
+func (p *Program) RunString(code string) error {
+	stmts, err := tokenizer.TokenizeRunes([]rune(code))
+	if err != nil {
+		return err
+	}
+
+	ast := godTree.New()
+	err = ast.ParseStmts(stmts)
+	ggErrs.Handle(err)
+	if err != nil {
+		return err
+	}
+
+	err = p.Run(ast)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (p *Program) Run(ast *godTree.Ast) error {
@@ -139,13 +159,11 @@ func (p *Program) evaluateAssignment(expr *godTree.AssignmentExpression) error {
 	existing := p.findVariable(expr.Target.Name())
 	if existing != nil {
 		existing.Value = val
-		//existing.Typ = val.Typ
 		return nil
 	}
 
 	newVar := variables.Variable{Name: expr.Target.Raw}
 	newVar.Value = val
-	//newVar.Typ = val.Typ
 
 	p.current.variables[newVar.Name] = &newVar
 	return nil

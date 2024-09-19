@@ -208,23 +208,19 @@ func stringLiteral(iter *iterator.Iter[rune]) (Token, error) {
 		return Token{}, ggErrs.Runtime("unexpected end of input after string literal")
 	}
 
-	ret := Token{
+	return Token{
 		Start:     start,
 		End:       iter.Index(),
 		Str:       string(str),
 		TokenType: StringLiteral,
-	}
-
-	return ret, nil
+	}, nil
 }
 
 func numLiteral(iter *iterator.Iter[rune]) (Token, error) {
 	start := iter.Index()
 	num := []rune{iter.Current()}
 	next, ok := iter.Peek()
-	//negative := false
 	if next == '-' {
-		//negative = true
 		num = append([]rune{'-'}, num...)
 		_, ok = iter.Next() // consume the '-'
 		next, ok = iter.Peek()

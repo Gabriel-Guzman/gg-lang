@@ -42,8 +42,8 @@ func parseStmt(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
 		expr, err := parseAssignmentExpr(id, tokIter)
 		return expr, err
 	default:
-		tokIter.Reset()
-		return parseValueExpr(tokIter)
+		tokIter.Next()
+		return nil, ggErrs.Runtime("unexpected token\n%s", tokIter.String())
 	}
 }
 
@@ -60,7 +60,7 @@ func parseAssignmentExpr(id *Identifier, tokIter *iterator.Iter[tokenizer.Token]
 
 // tokIter should be pointing to the token right before the value expression
 func parseValueExpr(iter *iterator.Iter[tokenizer.Token]) (IValExpr, error) {
-	beginning := iter.Copy()
+	startingIndex := iter.Index()
 	// first word in value
 	firstExpr, err := parseSingleValueExpr(iter)
 	if err != nil {
@@ -81,13 +81,12 @@ func parseValueExpr(iter *iterator.Iter[tokenizer.Token]) (IValExpr, error) {
 		}
 
 		// point to the first identifier in the binary expression
-		iter.Reset()
-		binaryExpr, err := parseBinaryExpression(beginning)
+		iter.SetIndex(startingIndex)
+		binaryExpr, err := parseBinaryExpression(iter)
 		if err != nil {
 			return nil, err
 		}
 		// mark statement as done
-		iter.End()
 		return binaryExpr, nil
 	}
 	return firstExpr, nil
@@ -144,4 +143,89 @@ func parseSingleValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (IValExpr, er
 	}
 
 	return firstExpr, nil
+}
+
+func parseFuncDecl(tokIter *iterator.Iter[tokenizer.Token]) (*FunctionDeclExpression, error) {
+	mbIdent, ok := tokIter.Next()
+	if !ok {
+		return nil, ggErrs.Runtime("Expected func name\n%s", tokIter.String())
+	}
+
+	id, err := newIdentifier(mbIdent)
+	if err != nil {
+		return nil, ggErrs.Runtime("Invalid identifier\n%s", tokIter.String())
+	}
+
+	mbOpenParen, ok := tokIter.Next()
+	if !ok || mbOpenParen.TokenType != tokenizer.ROpenParen {
+		return nil, ggErrs.Runtime("Expected (\n%s", tokIter.String())
+	}
+
+	var parms []string
+	for {
+		parm, ok := tokIter.Next()
+		if !ok {
+			return nil, ggErrs.Runtime("Unexpected end of param list\n%s", tokIter.String())
+		}
+		if parm.TokenType == tokenizer.RCloseParen {
+			break
+		}
+		if parm.TokenType == tokenizer.RComma {
+			continue
+		}
+		if parm.TokenType != tokenizer.Var {
+			return nil, ggErrs.Runtime("Unexpected token\n%s", tokIter.String())
+		}
+
+		parms = append(parms, parm.Str)
+	}
+
+	mbOpenBrack, ok := tokIter.Next()
+	if !ok || mbOpenBrack.TokenType != tokenizer.ROpenBrace {
+		return nil, ggErrs.Runtime("Expected {\n%s", tokIter.String())
+	}
+
+	return &FunctionDeclExpression{
+		Target: *id,
+		Parms:  parms,
+		Value:  nil,
+	}, nil
+}
+
+// iter should be pointing to the opening parenthesis here
+func newFuncCallExpression(funcName *Identifier, iter *iterator.Iter[tokenizer.Token]) (IValExpr, error) {
+	nextTok, ok := iter.Peek()
+	if !ok {
+		return nil, ggErrs.Runtime("expected closing parenthesis ')' or args after function name\n%s", iter.String())
+	}
+	if nextTok.TokenType == tokenizer.RCloseParen {
+		iter.Next() // consume the closing parenthesis ')'
+		return &FunctionCallExpression{
+			Id:   *funcName,
+			Args: nil,
+		}, nil
+	}
+
+	var args []IValExpr
+	for {
+		val, err := parseValueExpr(iter)
+		if err != nil {
+			return nil, err
+		}
+		if !iter.HasCurrent() {
+			return nil, ggErrs.Runtime("unexpected end of arg list\n%s", iter.String())
+		}
+		args = append(args, val)
+		mbComma := iter.Current()
+		if mbComma.TokenType == tokenizer.RComma {
+			continue
+		}
+		if mbComma.TokenType == tokenizer.RCloseParen {
+			break
+		}
+	}
+	return &FunctionCallExpression{
+		Id:   *funcName,
+		Args: args,
+	}, nil
 }
