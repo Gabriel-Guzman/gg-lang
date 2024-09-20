@@ -3,7 +3,7 @@ package tokenizer
 import (
 	"fmt"
 	"gg-lang/src/ggErrs"
-	"gg-lang/src/iterator"
+	"gg-lang/src/parser"
 	uni "unicode"
 )
 
@@ -29,7 +29,6 @@ const (
 	beginSeparators
 	RTerm
 	RComma
-	RSpace
 	endSeparators
 
 	beginIdentifiers
@@ -86,7 +85,6 @@ var reservedTokens = map[TokenType]string{
 
 	// separators
 	RComma: ",",
-	RSpace: " ",
 
 	// built-in literals
 	TrueLiteral:  "true",
@@ -125,177 +123,250 @@ func (t Token) String() string {
 }
 
 func TokenizeRunes(ins []rune) ([][]Token, error) {
-	iter := iterator.New(ins)
-	iter.Stringer = func(in rune) string {
+	par := parser.New(ins)
+	par.SetStringer(func(in rune) string {
 		return string(in)
-	}
-	iter.Separator = ""
+	})
+	par.SetSeparator("")
 
 	var stmts [][]Token
-	var stmt []Token
-	curr, ok := iter.Next()
 
-	for ok {
-	sw_stmt:
+	var currStmt []Token
+
+	endStmt := func() {
+		stmts = append(stmts, currStmt)
+		currStmt = nil
+	}
+
+	addToCurr := func(tok Token) {
+		currStmt = append(currStmt, tok)
+	}
+
+	isRTok := func(t TokenType) bool {
+		return isReserved(string(par.Curr)) && lookup(string(par.Curr)) == t
+	}
+
+	// par starts at -1
+	par.Advance()
+	for par.HasCurr {
 		switch {
-		// fully ignore spaces
-		case uni.IsSpace(curr):
-		case isReserved(string(curr)):
-			// checking for reserved single rune
-			opt := lookup(string(curr))
-			// semicolon, instakill statement
-			if opt == RTerm {
-				stmts = append(stmts, stmt)
-				stmt = nil
-				break sw_stmt
-			}
-
-			// if non-semicolon but still reserved, add to current statement
-			// TODO impl parseOperator here to handle ops longer than 1 rune
-			stmt = append(stmt, newSingleRuneToken(iter, opt))
-
-			// if what we added was { or }, end the statement
-			if opt == ROpenBrace || opt == RCloseBrace {
-				stmts = append(stmts, stmt)
-				stmt = nil
-			}
-		case uni.IsLetter(curr):
-			// track start, end for token struct
-			start := iter.Index()
-			// parse entire token expecting a variable
-			vr := variable(iter)
-			end := iter.Index()
-
-			// checking for reserved tokens longer than 1 rune
-			if isReserved(vr.Str) {
-				opt := lookup(vr.Str)
-				stmt = append(stmt, Token{
-					Start:     start,
-					End:       end,
-					Str:       vr.Str,
-					TokenType: opt,
-				})
-			} else {
-				stmt = append(stmt, vr)
-			}
-		case uni.IsDigit(curr):
-			// NOTE: unary minus is not caught here and is instead parsed as -1 * x later
-			tok, err := numLiteral(iter)
+		case shouldIgnore(par.Curr):
+			par.Advance()
+		case isRTok(RTerm): // begin reserved characters
+			par.Advance()
+			endStmt()
+		case isRTok(RQuote):
+			strTok, err := parseStringLiteral(par)
 			if err != nil {
 				return nil, err
 			}
-			stmt = append(stmt, tok)
-		case string(curr) == RQuote.String():
-			_, ok = iter.Next() // consume the opening quote
-			if !ok {
-				return nil, ggErrs.Runtime("unterminated string literal")
-			}
-			tok, err := parseStringLiteral(iter)
+			addToCurr(strTok)
+		case isReserved(string(par.Curr)) && lookup(string(par.Curr)).IsOperator():
+			tok, err := _parseOperator(par)
 			if err != nil {
-				return nil, ggErrs.Runtime("invalid character %c in string literal", curr)
+				return nil, err
 			}
-			stmt = append(stmt, tok)
-		default:
-			return nil, ggErrs.Runtime("unexpected character %c, %d", curr, curr)
+			addToCurr(tok)
+		case isRTok(ROpenBrace): // begin containers
+			fallthrough
+		case isRTok(RCloseBrace):
+			addToCurr(singleRuneTok(par, lookup(string(par.Curr))))
+			endStmt()
+		case isRTok(RComma):
+			fallthrough
+		case isRTok(ROpenParen):
+			fallthrough
+		case isRTok(RCloseParen):
+			addToCurr(singleRuneTok(par, lookup(string(par.Curr))))
+		case uni.IsDigit(par.Curr):
+			numTok, err := parseNumLiteral(par)
+			if err != nil {
+				return nil, err
+			}
+			addToCurr(numTok)
+		case uni.IsLetter(par.Curr):
+			idTok, err := parseIdentifier(par)
+			if err != nil {
+				return nil, err
+			}
+			addToCurr(idTok)
 		}
-		curr, ok = iter.Next()
 	}
 
-	if len(stmt) > 0 {
-		return nil, ggErrs.Runtime("unterminated statement\n%s\n%s", stmt, iter.String())
-	}
 	return stmts, nil
 }
 
-func newSingleRuneToken(iter *iterator.Iter[rune], tokenType TokenType) Token {
-	start := iter.Index()
+func singleRuneTok(p *parser.Parser[rune], tokType TokenType) Token {
+	curr := p.Curr
 	ret := Token{
-		Start:     start,
-		End:       iter.Index(),
-		Str:       string(iter.Current()),
-		TokenType: tokenType,
+		Start:     p.Index(),
+		End:       p.Index() + 1,
+		Str:       string(curr),
+		TokenType: tokType,
 	}
+
+	p.Advance()
 	return ret
 }
 
-func parseStringLiteral(iter *iterator.Iter[rune]) (Token, error) {
-	start := iter.Index()
-	str := []rune{iter.Current()}
-
-	curr, ok := iter.Next()
-	for ok && curr != '"' {
-		str = append(str, curr)
-		curr, ok = iter.Next()
+// parsers must consume every rune that they add to a token
+func parseIdentifier(p *parser.Parser[rune]) (Token, error) {
+	start := p.Index()
+	if !p.HasCurr {
+		return Token{}, ggErrs.Crit("identifier parser called with nothing in parser\n%s", p.String())
 	}
 
-	if !ok {
-		return Token{}, ggErrs.Runtime("unexpected end of input after string literal")
+	if !uni.IsLetter(p.Curr) {
+		return Token{}, ggErrs.Crit("expected letter, got %s\n%s", string(p.Curr), p.String())
+	}
+
+	id := ""
+	for {
+		if p.HasCurr && idRune(p.Curr) {
+			id += string(p.Curr)
+			p.Advance()
+			continue
+		}
+		// not a letter or digit or underscore
+		break
+	}
+
+	if id == "" {
+		return Token{}, ggErrs.Crit("could not parse identifier\n%s", p.String())
+	}
+
+	if isReserved(id) {
+		tt := lookup(id)
+		return Token{
+			Start:     start,
+			End:       p.Index() + 1,
+			Str:       id,
+			TokenType: tt,
+		}, nil
 	}
 
 	return Token{
 		Start:     start,
-		End:       iter.Index(),
-		Str:       string(str),
+		End:       p.Index() + 1,
+		Str:       id,
+		TokenType: Var,
+	}, nil
+}
+
+func parseNumLiteral(p *parser.Parser[rune]) (Token, error) {
+	start := p.Index()
+	if !p.HasCurr {
+		return Token{}, ggErrs.Crit("number parser called with nothing in parser\n%s", p.String())
+	}
+
+	num := ""
+
+	for {
+		if p.HasCurr && (uni.IsDigit(p.Curr)) {
+			num += string(p.Curr)
+			p.Advance()
+			continue
+		}
+		// not a digit
+		break
+	}
+
+	if num == "" {
+		return Token{}, ggErrs.Crit("could not parse number\n%s", p.String())
+	}
+
+	return Token{
+		Start:     start,
+		End:       p.Index() + 1,
+		Str:       num,
+		TokenType: IntLiteral,
+	}, nil
+}
+
+func _parseOperator(p *parser.Parser[rune]) (Token, error) {
+	start := p.Index()
+	if !p.HasCurr {
+		return Token{}, ggErrs.Crit("operator parser called with nothing in parser\n%s", p.String())
+	}
+	op := ""
+
+	for {
+		if p.HasCurr {
+			if isReserved(string(p.Curr)) && lookup(string(p.Curr)).IsOperator() {
+				// token is an operator, add it to the operator string
+				op += string(p.Curr)
+				p.Advance()
+				continue
+			}
+			// not reserved or not an operator, done parsing
+			break
+		} else {
+			// nothing left in parser
+			break
+		}
+	}
+
+	if op == "" {
+		return Token{}, ggErrs.Crit("could not parse operator\n%s", p.String())
+	}
+
+	if isReserved(op) {
+		realOp := lookup(op)
+		if !realOp.IsOperator() {
+			return Token{}, ggErrs.Runtime("unknown operator \n%s", p.String())
+		}
+
+		return Token{
+			Start:     start,
+			End:       p.Index() + 1,
+			Str:       op,
+			TokenType: realOp,
+		}, nil
+	}
+
+	return Token{}, ggErrs.Runtime("unknown operator \n%s", p.String())
+}
+
+func parseStringLiteral(p *parser.Parser[rune]) (Token, error) {
+	if !p.HasCurr {
+		return Token{}, ggErrs.Crit("string literal parser called with nothing in parser\n%s", p.String())
+	}
+	if string(p.Curr) != reservedTokens[RQuote] {
+		return Token{}, ggErrs.Crit("string literal parser called on non-quote\n%s", p.String())
+	}
+
+	p.Advance() // consume opening quote
+	start := p.Index()
+
+	str := ""
+
+	for {
+		if !p.HasCurr {
+			return Token{}, ggErrs.Runtime("unterminated string literal\n%s", p.String())
+		}
+		if string(p.Curr) == reservedTokens[RQuote] {
+			p.Advance() // consume closing quote
+			break
+		}
+
+		str += string(p.Curr)
+		p.Advance()
+	}
+
+	return Token{
+		Start:     start,
+		End:       p.Index() + 1,
+		Str:       str,
 		TokenType: StringLiteral,
 	}, nil
 }
 
-// parses a number literal.
-// currently, only number runes are supported (no decimal, scientific notation, etc.)
-// iter points to the first rune of the number
-func numLiteral(iter *iterator.Iter[rune]) (Token, error) {
-	start := iter.Index()
-	num := []rune{iter.Current()}
-	next, ok := iter.Peek()
-
-loop:
-	for ok {
-		switch {
-		case uni.IsDigit(next):
-			num = append(num, next)
-			_, ok = iter.Next() // consume the next rune
-			next, ok = iter.Peek()
-		case uni.IsLetter(next):
-			return Token{}, ggErrs.Runtime("unexpected character %c after number literal", next)
-		default:
-			break loop
-		}
-	}
-
-	return Token{
-		Start:     start,
-		End:       iter.Index(),
-		Str:       string(num),
-		TokenType: IntLiteral,
-	}, nil
+func shouldIgnore(curr rune) bool {
+	return uni.IsSpace(curr)
 }
 
 // this checks runes with index in identifier > 0,
 // the first rune is always a letter at this point
 func idRune(r rune) bool {
 	return uni.IsLetter(r) || uni.IsDigit(r) || r == '_'
-}
-
-// parse an entire identifier token
-func variable(iter *iterator.Iter[rune]) Token {
-	start := iter.Index()
-	id := []rune{iter.Current()}
-
-	next, ok := iter.Peek()
-	for ok {
-		if !idRune(next) {
-			break
-		}
-		id = append(id, next)
-
-		iter.Next() // consume the next rune we just checked
-		next, ok = iter.Peek()
-	}
-
-	return Token{
-		Start:     start,
-		End:       iter.Index(),
-		Str:       string(id),
-		TokenType: Var,
-	}
 }
