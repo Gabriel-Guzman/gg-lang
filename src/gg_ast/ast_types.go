@@ -6,7 +6,7 @@ type ExpressionKind int
 
 const (
 	/*
-		valueExpression implementing types
+		ValueExpression implementing kinds
 	*/
 	ExprBinary ExpressionKind = iota
 	ExprIntLiteral
@@ -17,7 +17,7 @@ const (
 	SentinelValueExpression
 
 	/*
-	   assignmentExpression implementing types
+	   Expression implementing kinds
 	*/
 	ExprAssignment
 	ExprFuncDecl
@@ -28,7 +28,7 @@ type Expression interface {
 	Kind() ExpressionKind
 }
 
-type ValExpression interface {
+type ValueExpression interface {
 	Expression
 
 	Name() string

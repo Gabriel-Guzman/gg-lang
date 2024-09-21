@@ -40,13 +40,17 @@ func (a *astBuilder) parseBlockStatement() ([]Expression, error) {
 
 func newAstBuilder(ins [][]token.Token) *astBuilder {
 	var stmtParserMembers []*parser.Parser[token.Token]
+	// astBuilder has a list of parsers which each have a parser, set those up
+	// TODO load parsers lazily
 	for _, tokens := range ins {
 		newStmtParser := parser.New(tokens)
 		newStmtParser.SetStringer(tokStringer)
 		stmtParserMembers = append(stmtParserMembers, newStmtParser)
 	}
 	newParser := parser.New(stmtParserMembers)
+	// due to the stringer below, only one member will print and doesn't need a separator
 	newParser.SetSeparator("")
+	// set up the stringer to only show the current statement being parsed, not the entire input
 	newParser.SetStringer(func(in *parser.Parser[token.Token]) string {
 		if newParser.Curr == in {
 			return in.String()
@@ -58,6 +62,15 @@ func newAstBuilder(ins [][]token.Token) *astBuilder {
 	return &astBuilder{
 		StmtPar: newParser,
 	}
+}
+
+func BuildFromString(ins string) (*Ast, error) {
+	stmts, err := token.TokenizeRunes([]rune(ins))
+	if err != nil {
+		return nil, err
+	}
+
+	return BuildFromStatements(stmts)
 }
 
 func BuildFromStatements(ins [][]token.Token) (*Ast, error) {
@@ -74,28 +87,25 @@ func BuildFromStatements(ins [][]token.Token) (*Ast, error) {
 		}
 		a.StmtPar.Advance() // consume the statement
 
-		// function trap, note continue at end of this block
+		// if the last statement was a function declaration, parse its block statement
 		if stmt.Kind() == ExprFuncDecl {
+			exprs, err := a.parseBlockStatement()
+			if err != nil {
+				return nil, err
+			}
+
 			decl := stmt.(*FunctionDeclExpression)
-			exprs, err := a.parseBlockStatement()
-			if err != nil {
-				return nil, err
-			}
 			decl.Value = exprs
-
-			expressions = append(expressions, decl)
-			continue
 		}
+
 		if stmt.Kind() == ExprForLoop {
-			loop := stmt.(*ForLoopExpression)
 			exprs, err := a.parseBlockStatement()
 			if err != nil {
 				return nil, err
 			}
-			loop.Body = exprs
 
-			expressions = append(expressions, loop)
-			continue
+			loop := stmt.(*ForLoopExpression)
+			loop.Body = exprs
 		}
 
 		expressions = append(expressions, stmt)

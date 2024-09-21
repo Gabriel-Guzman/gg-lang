@@ -19,11 +19,10 @@ func Exec(filename string) {
 		panic(err)
 	}
 
+	// tokenize the input manually so we can save the tokens to a file for debugging
 	stmts, err := token.TokenizeRunes([]rune(string(out)))
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Parsed %d statements\n\n", len(stmts))
+	ggErrs.Handle(err)
+
 	stmtsJson, err := json.MarshalIndent(stmts, "", "    ")
 	ggErrs.Handle(err)
 
@@ -31,14 +30,6 @@ func Exec(filename string) {
 	ggErrs.Handle(err)
 
 	ast, err := gg_ast.BuildFromStatements(stmts)
-	ggErrs.Handle(err)
-	if err != nil {
-		return
-	}
-
-	fmt.Println("\nRunning program...")
-	sess := program.New()
-	err = sess.Run(ast)
 	ggErrs.Handle(err)
 
 	tree, err := json.MarshalIndent(ast, "", "    ")
@@ -48,4 +39,9 @@ func Exec(filename string) {
 	ggErrs.Handle(err)
 
 	fmt.Println("AST saved to out/ast.json")
+
+	fmt.Println("Running program...")
+	sess := program.New()
+	err = sess.Run(ast)
+	ggErrs.Handle(err)
 }

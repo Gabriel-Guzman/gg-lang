@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-func (p *Program) evaluateValueExpr(expr gg_ast.ValExpression) (*variables.RuntimeValue, error) {
+func (p *Program) evaluateValueExpr(expr gg_ast.ValueExpression) (*variables.RuntimeValue, error) {
 	switch expr.Kind() {
 	case gg_ast.ExprVariable:
 		name := expr.(*gg_ast.Identifier).Name()

@@ -5,10 +5,6 @@ import (
 	"runtime"
 )
 
-type errMessageFactory struct {
-	text string
-}
-
 type SyntaxErr struct {
 	Message string
 }
@@ -43,15 +39,6 @@ func Syntax(msg string, args ...interface{}) *SyntaxErr {
 
 func Crit(msg string, args ...interface{}) *CritErr {
 	pc, file, no, ok := runtime.Caller(1)
-	details := runtime.FuncForPC(pc)
-	if ok && details != nil {
-		return &CritErr{msg: fmt.Sprintf("%s:%d @ %s\n", file, no, details.Name()) + fmt.Sprintf(msg, args...)}
-	}
-	return &CritErr{msg: fmt.Sprintf(msg, args...)}
-}
-
-func WrappedCrit(msg string, args ...interface{}) *CritErr {
-	pc, file, no, ok := runtime.Caller(2)
 	details := runtime.FuncForPC(pc)
 	if ok && details != nil {
 		return &CritErr{msg: fmt.Sprintf("%s:%d @ %s\n", file, no, details.Name()) + fmt.Sprintf(msg, args...)}

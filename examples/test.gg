@@ -1,0 +1,52 @@
+x = 4;
+for x > 0 {
+    print("i'm going for 4!!!");
+    x = x -1;
+}
+
+print("begin math tests");
+x = 6 / 2 * 5 + 1;
+print(x, 16);
+x = 6 / 2 * 5;
+print(x, 15);
+x = 12 / 2 / 3;
+print(x, 2);
+x = 1 + 2 * 3;
+print(x, 7);
+x = 1 + 2 * 3 - 1;
+print(x, 6);
+x = 1 + 2 * 3 - 1 * 2 - 4 * 2 + 6 / 3;
+print(x, -1);
+
+print("end math tests");
+print("all below should be true");
+print(true && false == true && false);
+print(true == true);
+print(true || false);
+print(false || false == true && false);
+print(1 + 5 * 2 == 11);
+print("end bool tests");
+
+print("begin func decl tests");
+routine helloWithArg(arg1) {
+    print(arg1);
+}
+
+routine hello() {}
+routine helloWithBody() {
+    print("helloWithBodyPrint");
+}
+
+routine helloWithMultilineStatement() {
+    x = 1;
+    x = x + 1;
+    print(x);
+}
+
+print("end func decls");
+print("begin func calls");
+hello();
+helloWithBody();
+helloWithMultilineStatement();
+helloWithArg("helloWithArgPrint");
+print("end func calls");

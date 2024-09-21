@@ -6,7 +6,6 @@ import (
 	"gg-lang/src/ggErrs"
 	"gg-lang/src/gg_ast"
 	"gg-lang/src/operators"
-	"gg-lang/src/token"
 	"gg-lang/src/variables"
 	"os"
 	"strings"
@@ -17,7 +16,7 @@ type Scope struct {
 	variables map[string]*variables.Variable
 }
 
-// declares a variable in the current Scope and checks if it's already declared
+// declares a variables.Variable in the Program.current Scope and checks if it's already declared
 func (s *Scope) declareVar(name string, value *variables.RuntimeValue) (*variables.Variable, error) {
 	_, ok := s.variables[name]
 	if ok {
@@ -31,7 +30,7 @@ func (s *Scope) declareVar(name string, value *variables.RuntimeValue) (*variabl
 	return v, nil
 }
 
-// declares a variable in the current Scope without checking if it's already declared
+// declares a variables.Variable in the Program.current Scope without checking if it's already declared
 func (s *Scope) softDeclareVar(name string, value *variables.RuntimeValue) (*variables.Variable, error) {
 	v := &variables.Variable{
 		Name:         name,
@@ -41,7 +40,7 @@ func (s *Scope) softDeclareVar(name string, value *variables.RuntimeValue) (*var
 	return v, nil
 }
 
-// declares a variable in the top Scope and checks if it's already declared
+// declares a variables.Variable in the Program.top Scope and checks if it's already declared
 func (p *Program) declareVarTop(name string, value *variables.RuntimeValue) (*variables.Variable, error) {
 	return p.top.declareVar(name, value)
 }
@@ -63,6 +62,8 @@ func (p *Program) String() string {
 	return sb.String()
 }
 
+// New initializes the top Scope, declares every default builtin.Func,
+// and registers every default operators.Operator
 func New() *Program {
 	top := &Scope{variables: make(map[string]*variables.Variable)}
 	prog := &Program{
@@ -88,14 +89,10 @@ func New() *Program {
 	}
 }
 
+// a shortcut for executing a string of code
 func (p *Program) RunString(code string) error {
-	//token.Init()
-	stmts, err := token.TokenizeRunes([]rune(code))
-	if err != nil {
-		return err
-	}
 
-	ast, err := gg_ast.BuildFromStatements(stmts)
+	ast, err := gg_ast.BuildFromString(code)
 	ggErrs.Handle(err)
 	if err != nil {
 		return err
