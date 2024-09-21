@@ -19,3 +19,12 @@ func (o *orBools) Evaluate(lhs interface{}, rhs interface{}) interface{} {
 func (o *orBools) ResultType() variables.VarType {
 	return variables.Boolean
 }
+
+type equalsBools struct{}
+
+func (e *equalsBools) Evaluate(lhs interface{}, rhs interface{}) interface{} {
+	return lhs.(bool) == rhs.(bool)
+}
+func (e *equalsBools) ResultType() variables.VarType {
+	return variables.Boolean
+}

@@ -7,20 +7,20 @@ import (
 	"strconv"
 )
 
-func (p *Program) evaluateValueExpr(expr gg_ast.IValExpr) (*variables.RuntimeValue, error) {
+func (p *Program) evaluateValueExpr(expr gg_ast.ValExpression) (*variables.RuntimeValue, error) {
 	switch expr.Kind() {
 	case gg_ast.ExprVariable:
 		name := expr.(*gg_ast.Identifier).Name()
 		v := p.findVariable(name)
 		if v != nil {
-			return v.Value, nil
+			return v.RuntimeValue, nil
 		}
 		return nil, ggErrs.Runtime("undefined variable: %s", name)
 	case gg_ast.ExprIntLiteral:
 		name := expr.(*gg_ast.Identifier).Name()
 		intVal, err := strconv.Atoi(name)
 		if err != nil {
-			return nil, ggErrs.Crit("unable to evaluate number literal: %s", err.Error())
+			return nil, ggErrs.Crit("unable to evaluate int literal: %s", err.Error())
 		}
 		return &variables.RuntimeValue{
 			Val: intVal,
@@ -58,7 +58,7 @@ func (p *Program) evaluateValueExpr(expr gg_ast.IValExpr) (*variables.RuntimeVal
 		}, nil
 	case gg_ast.ExprFunctionCall:
 		f := expr.(*gg_ast.FunctionCallExpression)
-		if err := p.funcCall(f); err != nil {
+		if err := p.call(f); err != nil {
 			return &variables.RuntimeValue{
 				Val: nil,
 				Typ: variables.Void,

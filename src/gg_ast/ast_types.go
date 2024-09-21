@@ -27,7 +27,7 @@ type Expression interface {
 	Kind() ExpressionKind
 }
 
-type IValExpr interface {
+type ValExpression interface {
 	Expression
 
 	Name() string

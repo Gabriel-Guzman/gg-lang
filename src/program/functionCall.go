@@ -7,15 +7,15 @@ import (
 	"gg-lang/src/variables"
 )
 
-func (p *Program) funcCall(f *gg_ast.FunctionCallExpression) error {
+func (p *Program) call(f *gg_ast.FunctionCallExpression) error {
 	variable, ok := p.top.variables[f.Id.Raw]
 	if !ok {
 		return ggErrs.Runtime("undefined function %s", f.Id.Raw)
 	}
 
 	// check if callable
-	if variable.Value.Typ != variables.Function &&
-		variable.Value.Typ != variables.BuiltinFunction {
+	if variable.RuntimeValue.Typ != variables.Function &&
+		variable.RuntimeValue.Typ != variables.BuiltinFunction {
 		return ggErrs.Runtime("%s is not callable", f.Id.Raw)
 	}
 
@@ -31,12 +31,12 @@ func (p *Program) funcCall(f *gg_ast.FunctionCallExpression) error {
 	}
 
 	// run builtin
-	if variable.Value.Typ == variables.BuiltinFunction {
-		return p.builtinFuncCall(variable.Value.Val.(builtin.Func), vals)
+	if variable.RuntimeValue.Typ == variables.BuiltinFunction {
+		return p.builtinFuncCall(variable.RuntimeValue.Val.(builtin.Func), vals)
 	}
 
 	// set up func expression
-	funcDeclExpr := variable.Value.Val.(*gg_ast.FunctionDeclExpression)
+	funcDeclExpr := variable.RuntimeValue.Val.(*gg_ast.FunctionDeclExpression)
 	if len(funcDeclExpr.Params) != len(f.Args) {
 		return ggErrs.Runtime("param count mismatch on", f.Id.Raw)
 	}
@@ -48,8 +48,8 @@ func (p *Program) funcCall(f *gg_ast.FunctionCallExpression) error {
 
 		name := funcDeclExpr.Params[i]
 		scopedVariables = append(scopedVariables, variables.Variable{
-			Name:  name,
-			Value: value,
+			Name:         name,
+			RuntimeValue: value,
 		})
 	}
 

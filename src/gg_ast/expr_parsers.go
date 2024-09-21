@@ -131,7 +131,7 @@ func parseIdentifier(p *parser.Parser[token.Token]) (*Identifier, error) {
 }
 
 // returns a simple value expression or a binary expression
-func parseValueExpr(p *parser.Parser[token.Token]) (IValExpr, error) {
+func parseValueExpr(p *parser.Parser[token.Token]) (ValExpression, error) {
 	if !p.HasCurr {
 		return nil, ggErrs.Runtime("unexpected end of expression\n%s", p.String())
 	}
@@ -192,7 +192,7 @@ func parseValueExpr(p *parser.Parser[token.Token]) (IValExpr, error) {
 }
 
 // A primary expression is either an identifier, a literal, or a function call
-func parsePrimaryExpr(p *parser.Parser[token.Token]) (IValExpr, error) {
+func parsePrimaryExpr(p *parser.Parser[token.Token]) (ValExpression, error) {
 	if !p.HasCurr {
 		return nil, ggErrs.Runtime("unexpected end of expression\n%s", p.String())
 	}
@@ -227,7 +227,7 @@ func parsePrimaryExpr(p *parser.Parser[token.Token]) (IValExpr, error) {
 	}
 }
 
-func parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (IValExpr, error) {
+func parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (ValExpression, error) {
 	if !advanceIfCurrIs(p, token.ROpenParen) {
 		return nil, ggErrs.Runtime("expected '(' after function name\n%s", p.String())
 	}
@@ -236,7 +236,7 @@ func parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (IValExpr,
 		return &FunctionCallExpression{Id: id}, nil
 	}
 
-	var args []IValExpr
+	var args []ValExpression
 	for {
 		if !p.HasCurr {
 			return nil, ggErrs.Runtime("Unexpected end of arg list\n%s", p.String())

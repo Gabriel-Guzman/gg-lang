@@ -17,28 +17,31 @@ type Scope struct {
 	variables map[string]*variables.Variable
 }
 
+// declares a variable in the current Scope and checks if it's already declared
 func (s *Scope) declareVar(name string, value *variables.RuntimeValue) (*variables.Variable, error) {
 	_, ok := s.variables[name]
 	if ok {
 		return nil, ggErrs.Runtime("variable '%s' already declared in this scope\n", name)
 	}
 	v := &variables.Variable{
-		Name:  name,
-		Value: value,
+		Name:         name,
+		RuntimeValue: value,
 	}
 	s.variables[name] = v
 	return v, nil
 }
 
+// declares a variable in the current Scope without checking if it's already declared
 func (s *Scope) softDeclareVar(name string, value *variables.RuntimeValue) (*variables.Variable, error) {
 	v := &variables.Variable{
-		Name:  name,
-		Value: value,
+		Name:         name,
+		RuntimeValue: value,
 	}
 	s.variables[name] = v
 	return v, nil
 }
 
+// declares a variable in the top Scope and checks if it's already declared
 func (p *Program) declareVarTop(name string, value *variables.RuntimeValue) (*variables.Variable, error) {
 	return p.top.declareVar(name, value)
 }
@@ -105,32 +108,41 @@ func (p *Program) RunString(code string) error {
 }
 
 func (p *Program) Run(ast *gg_ast.Ast) error {
-	for i, expr := range ast.Body {
-		switch expr.Kind() {
-		case gg_ast.ExprAssignment:
-			if err := p.evaluateAssignment(expr.(*gg_ast.AssignmentExpression)); err != nil {
-				return ggErrs.Runtime("expr %d: %v", i, err)
-			}
-
-		case gg_ast.ExprFuncDecl:
-			decl := expr.(*gg_ast.FunctionDeclExpression)
-			_, err := p.declareVarTop(decl.Target.Raw, &variables.RuntimeValue{
-				Val: decl,
-				Typ: variables.Function,
-			})
-			if err != nil {
-				return err
-			}
-
-		case gg_ast.ExprFunctionCall:
-			call := expr.(*gg_ast.FunctionCallExpression)
-			err := p.funcCall(call)
-			if err != nil {
-				return ggErrs.Runtime("expr %d: %v", i, err)
-			}
-		default:
-			return ggErrs.Crit("Invalid top-level expression: %s", expr.Kind().String())
+	for _, expr := range ast.Body {
+		err := p.RunExpression(expr)
+		if err != nil {
+			return err
 		}
+	}
+
+	return nil
+}
+
+func (p *Program) RunExpression(expr gg_ast.Expression) error {
+	switch expr.Kind() {
+	case gg_ast.ExprAssignment:
+		if err := p.evaluateAssignment(expr.(*gg_ast.AssignmentExpression)); err != nil {
+			return err
+		}
+
+	case gg_ast.ExprFuncDecl:
+		decl := expr.(*gg_ast.FunctionDeclExpression)
+		_, err := p.declareVarTop(decl.Target.Raw, &variables.RuntimeValue{
+			Val: decl,
+			Typ: variables.Function,
+		})
+		if err != nil {
+			return err
+		}
+
+	case gg_ast.ExprFunctionCall:
+		call := expr.(*gg_ast.FunctionCallExpression)
+		err := p.call(call)
+		if err != nil {
+			return err
+		}
+	default:
+		return ggErrs.Crit("Invalid top-level expression: %s", expr.Kind().String())
 	}
 
 	return nil
@@ -171,7 +183,6 @@ func (p *Program) findVariable(name string) *variables.Variable {
 
 func (p *Program) evaluateAssignment(expr *gg_ast.AssignmentExpression) error {
 	if expr.Target.Kind() != gg_ast.ExprVariable {
-
 		return ggErrs.Runtime("invalid assignment target: %s", expr.Target.Raw)
 	}
 
@@ -186,7 +197,7 @@ func (p *Program) evaluateAssignment(expr *gg_ast.AssignmentExpression) error {
 
 	existing := p.findVariable(expr.Target.Name())
 	if existing != nil {
-		existing.Value = val
+		existing.RuntimeValue = val // garbage collect old value
 		return nil
 	}
 

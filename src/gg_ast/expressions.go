@@ -28,9 +28,9 @@ func (id *Identifier) Kind() ExpressionKind { return ExpressionKind(id.idKind) }
 
 // a + b
 type BinaryExpression struct {
-	Lhs IValExpr
+	Lhs ValExpression
 	Op  string
-	Rhs IValExpr
+	Rhs ValExpression
 }
 
 func (be *BinaryExpression) Name() string         { return be.Op }
@@ -39,7 +39,7 @@ func (be *BinaryExpression) Kind() ExpressionKind { return ExprBinary }
 // a(b, c)
 type FunctionCallExpression struct {
 	Id   *Identifier
-	Args []IValExpr
+	Args []ValExpression
 }
 
 func (fce *FunctionCallExpression) Name() string         { return fce.Id.Name() }
@@ -48,7 +48,7 @@ func (fce *FunctionCallExpression) Kind() ExpressionKind { return ExprFunctionCa
 // a = 32
 type AssignmentExpression struct {
 	Target *Identifier
-	Value  IValExpr
+	Value  ValExpression
 }
 
 func (ae *AssignmentExpression) Kind() ExpressionKind { return ExprAssignment }
