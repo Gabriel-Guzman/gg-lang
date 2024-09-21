@@ -29,8 +29,8 @@ func Exec(filename string) {
 	err = os.WriteFile("out/stmts.json", stmtsJson, 0644)
 	ggErrs.Handle(err)
 
-	ast := gg_ast.New()
-	err = ast.ParseStmts(stmts)
+	ast, err := gg_ast.BuildFromStatements(stmts)
+	//err = ast.ParseStmts(stmts)
 	ggErrs.Handle(err)
 	if err != nil {
 		return

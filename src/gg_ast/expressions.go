@@ -24,7 +24,6 @@ type Identifier struct {
 func (id *Identifier) Name() string {
 	return id.Raw
 }
-
 func (id *Identifier) Kind() ExpressionKind { return ExpressionKind(id.idKind) }
 
 // a + b
@@ -36,14 +35,6 @@ type BinaryExpression struct {
 
 func (be *BinaryExpression) Name() string         { return be.Op }
 func (be *BinaryExpression) Kind() ExpressionKind { return ExprBinary }
-
-func newBinaryExpression(lhs IValExpr, operator string, rhs IValExpr) *BinaryExpression {
-	return &BinaryExpression{
-		Lhs: lhs,
-		Op:  operator,
-		Rhs: rhs,
-	}
-}
 
 // a(b, c)
 type FunctionCallExpression struct {
@@ -61,12 +52,6 @@ type AssignmentExpression struct {
 }
 
 func (ae *AssignmentExpression) Kind() ExpressionKind { return ExprAssignment }
-func newAssignmentExpression(target *Identifier, value IValExpr) *AssignmentExpression {
-	return &AssignmentExpression{
-		Target: target,
-		Value:  value,
-	}
-}
 
 // routine a(b, c) {
 type FunctionDeclExpression struct {

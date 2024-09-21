@@ -47,7 +47,6 @@ func (p *Program) funcCall(f *gg_ast.FunctionCallExpression) error {
 		value := vals[i]
 
 		name := funcDeclExpr.Params[i]
-
 		scopedVariables = append(scopedVariables, variables.Variable{
 			Name:  name,
 			Value: value,

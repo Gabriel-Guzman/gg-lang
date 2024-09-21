@@ -24,7 +24,7 @@ func parseTopLevelExpr(p *parser.Parser[token.Token]) (Expression, error) {
 	// first expression should be an identifier, a reserved keyword, or a value expression
 	// check reserved keywords first
 	if p.Curr.TokenType == token.Function {
-		funcDecl, err := _parseFuncDecl(p)
+		funcDecl, err := parseFuncDecl(p)
 		if err != nil {
 			return nil, err
 		}
@@ -34,18 +34,18 @@ func parseTopLevelExpr(p *parser.Parser[token.Token]) (Expression, error) {
 	// now it could be a function call or an assignment expression, both of which
 	// have to start with an identifier. this means no unassigned value expressions
 	// other than function calls are allowed at the top level.
-	id, err := _parseIdentifier(p)
+	id, err := parseIdentifier(p)
 	if err != nil {
 		return nil, err
 	}
 
 	if p.Curr.TokenType == token.RAssign {
 		p.Advance()
-		return _parseAssignmentExpr(id, p)
+		return parseAssignmentExpr(id, p)
 	}
 
 	// if no operator, it's a function call
-	return _parseFuncCallExpr(id, p)
+	return parseFuncCallExpr(id, p)
 }
 
 /*
@@ -56,8 +56,8 @@ This will almost always be the token right after the first identifier in the exp
 i.e. the "(" in "funCall();" or the "=" in "x = 1 + 2;"
 After a successful parse, the parser should be pointing to the token after the expression
 */
-func _parseAssignmentExpr(target *Identifier, p *parser.Parser[token.Token]) (*AssignmentExpression, error) {
-	expr, err := _parseValueExpr(p)
+func parseAssignmentExpr(target *Identifier, p *parser.Parser[token.Token]) (*AssignmentExpression, error) {
+	expr, err := parseValueExpr(p)
 	if err != nil {
 		return nil, err
 	}
@@ -65,10 +65,10 @@ func _parseAssignmentExpr(target *Identifier, p *parser.Parser[token.Token]) (*A
 	return &AssignmentExpression{Target: target, Value: expr}, nil
 }
 
-func _parseFuncDecl(p *parser.Parser[token.Token]) (*FunctionDeclExpression, error) {
+func parseFuncDecl(p *parser.Parser[token.Token]) (*FunctionDeclExpression, error) {
 	p.Advance() // eat the function keyword
 
-	id, err := _parseIdentifier(p)
+	id, err := parseIdentifier(p)
 	if err != nil {
 		return nil, err
 	}
@@ -84,9 +84,11 @@ func _parseFuncDecl(p *parser.Parser[token.Token]) (*FunctionDeclExpression, err
 		}
 		param := p.Curr
 		if param.TokenType == token.RCloseParen {
+			p.Advance() // eat the closing parenthesis ')'
 			break
 		}
 		if param.TokenType == token.RComma {
+			p.Advance()
 			continue
 		}
 		if param.TokenType != token.Ident {
@@ -107,7 +109,7 @@ func _parseFuncDecl(p *parser.Parser[token.Token]) (*FunctionDeclExpression, err
 	}, nil
 }
 
-func _parseIdentifier(p *parser.Parser[token.Token]) (*Identifier, error) {
+func parseIdentifier(p *parser.Parser[token.Token]) (*Identifier, error) {
 	t := p.Curr
 	var ik IdExprKind
 	switch t.TokenType {
@@ -129,13 +131,13 @@ func _parseIdentifier(p *parser.Parser[token.Token]) (*Identifier, error) {
 }
 
 // returns a simple value expression or a binary expression
-func _parseValueExpr(p *parser.Parser[token.Token]) (IValExpr, error) {
+func parseValueExpr(p *parser.Parser[token.Token]) (IValExpr, error) {
 	if !p.HasCurr {
 		return nil, ggErrs.Runtime("unexpected end of expression\n%s", p.String())
 	}
 
 	// build initial binary tree
-	lhsNonBinary, err := _parseSingleValueExpr(p)
+	lhsNonBinary, err := parsePrimaryExpr(p)
 	if err != nil {
 		return nil, err
 	}
@@ -145,8 +147,9 @@ func _parseValueExpr(p *parser.Parser[token.Token]) (IValExpr, error) {
 	}
 
 	op := p.Curr
+	p.Advance() // eat the operator token
 
-	rhs, err := _parseSingleValueExpr(p)
+	rhs, err := parsePrimaryExpr(p)
 	if err != nil {
 		return nil, err
 	}
@@ -163,8 +166,9 @@ func _parseValueExpr(p *parser.Parser[token.Token]) (IValExpr, error) {
 		if !op.TokenType.IsMathOperator() {
 			break
 		}
+		p.Advance() // eat the operator token
 
-		rhs, err := _parseSingleValueExpr(p)
+		rhs, err := parsePrimaryExpr(p)
 		if err != nil {
 			return nil, err
 		}
@@ -187,8 +191,8 @@ func _parseValueExpr(p *parser.Parser[token.Token]) (IValExpr, error) {
 	return lhs, nil
 }
 
-// A single value expression is either an identifier, a literal, or a function call
-func _parseSingleValueExpr(p *parser.Parser[token.Token]) (IValExpr, error) {
+// A primary expression is either an identifier, a literal, or a function call
+func parsePrimaryExpr(p *parser.Parser[token.Token]) (IValExpr, error) {
 	if !p.HasCurr {
 		return nil, ggErrs.Runtime("unexpected end of expression\n%s", p.String())
 	}
@@ -196,7 +200,7 @@ func _parseSingleValueExpr(p *parser.Parser[token.Token]) (IValExpr, error) {
 	// unary operators
 	if p.Curr.TokenType == token.RMinus {
 		p.Advance()
-		id, err := _parseIdentifier(p)
+		id, err := parseIdentifier(p)
 		if err != nil {
 			return nil, err
 		}
@@ -210,22 +214,26 @@ func _parseSingleValueExpr(p *parser.Parser[token.Token]) (IValExpr, error) {
 			Rhs: id,
 		}, nil
 	} else {
-		id, err := _parseIdentifier(p)
+		id, err := parseIdentifier(p)
 		if err != nil {
 			return nil, err
 		}
 
 		if p.Curr.TokenType == token.ROpenParen {
-			return _parseFuncCallExpr(id, p)
+			return parseFuncCallExpr(id, p)
 		} else {
 			return id, nil
 		}
 	}
 }
 
-func _parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (IValExpr, error) {
+func parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (IValExpr, error) {
 	if !advanceIfCurrIs(p, token.ROpenParen) {
 		return nil, ggErrs.Runtime("expected '(' after function name\n%s", p.String())
+	}
+	if p.Curr.TokenType == token.RCloseParen {
+		p.Advance() // consume the ')'
+		return &FunctionCallExpression{Id: id}, nil
 	}
 
 	var args []IValExpr
@@ -233,20 +241,24 @@ func _parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (IValExpr
 		if !p.HasCurr {
 			return nil, ggErrs.Runtime("Unexpected end of arg list\n%s", p.String())
 		}
-		arg := p.Curr
-		if arg.TokenType == token.RCloseParen {
-			break
-		}
-		if arg.TokenType == token.RComma {
-			continue
-		}
-		expr, err := _parseValueExpr(p)
+
+		expr, err := parseValueExpr(p)
 		if err != nil {
 			return nil, err
 		}
+		args = append(args, expr)
+
+		arg := p.Curr
+		if arg.TokenType == token.RCloseParen {
+			p.Advance() // consume the ')'
+			break
+		}
+	
+		if !advanceIfCurrIs(p, token.RComma) {
+			return nil, ggErrs.Runtime("expected ',' or ')' after argument\n%s", p.String())
+		}
 
 		args = append(args, expr)
-		p.Advance()
 	}
 
 	return &FunctionCallExpression{
