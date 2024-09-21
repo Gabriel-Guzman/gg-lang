@@ -14,20 +14,19 @@ func tokenizeStmt(par *parser.Parser[rune]) ([]Token, error) {
 	a := func(tok Token) {
 		stmt = append(stmt, tok)
 	}
-	for {
+	for tk.Par.HasCurr {
 		switch {
 		case shouldIgnore(par.Curr):
-			tk.consume()
+			tk.Par.Advance()
 		case isRuneReserved(tk.Par.Curr, RTerm): // begin reserved characters
-			tk.consume()
+			tk.Par.Advance()
 			return stmt, nil
 		case isRuneReserved(tk.Par.Curr, RQuote):
 			strTok, err := parseStringLiteral(par)
 			if err != nil {
 				return nil, err
 			}
-			stmt = append(stmt, strTok)
-			//addToCurr(strTok)
+			a(strTok)
 		case isReserved(string(par.Curr)) && lookup(string(par.Curr)).IsOperator():
 			tok, err := _parseOperator(par)
 			if err != nil {
@@ -35,19 +34,17 @@ func tokenizeStmt(par *parser.Parser[rune]) ([]Token, error) {
 			}
 			a(tok)
 		case isRuneReserved(tk.Par.Curr, ROpenBrace): // begin containers
-			a(singleRuneTok(par, ROpenBrace))
+			a(parseReservedSingleRuneTok(par, ROpenBrace))
+			return stmt, nil
 		case isRuneReserved(tk.Par.Curr, RCloseBrace):
-			a(singleRuneTok(par, RCloseBrace))
-			break
+			a(parseReservedSingleRuneTok(par, RCloseBrace))
+			return stmt, nil
 		case isRuneReserved(tk.Par.Curr, RComma):
-			a(singleRuneTok(par, RComma))
-			tk.consume()
+			a(parseReservedSingleRuneTok(par, RComma))
 		case isRuneReserved(tk.Par.Curr, ROpenParen):
-			a(singleRuneTok(par, ROpenParen))
-			tk.consume()
+			a(parseReservedSingleRuneTok(par, ROpenParen))
 		case isRuneReserved(tk.Par.Curr, RCloseParen):
-			a(singleRuneTok(par, RCloseParen))
-			tk.consume()
+			a(parseReservedSingleRuneTok(par, RCloseParen))
 		case uni.IsDigit(par.Curr):
 			numTok, err := parseNumLiteral(par)
 			if err != nil {
@@ -60,8 +57,15 @@ func tokenizeStmt(par *parser.Parser[rune]) ([]Token, error) {
 				return nil, err
 			}
 			a(idTok)
+		default:
+			return nil, ggErrs.Crit("unexpected character", par.String())
 		}
 	}
+
+	if len(stmt) == 0 {
+		return nil, nil
+	}
+	return nil, ggErrs.Crit("unexpected end of input", par.String())
 }
 
 type tkzr struct {
@@ -86,13 +90,16 @@ func TokenizeRunes(ins []rune) ([][]Token, error) {
 		if err != nil {
 			return nil, err
 		}
+		if len(stmt) == 0 {
+			break
+		}
 		stmts = append(stmts, stmt)
 	}
 
 	return stmts, nil
 }
 
-func singleRuneTok(p *parser.Parser[rune], tokType TokenType) Token {
+func parseReservedSingleRuneTok(p *parser.Parser[rune], tokType TokenType) Token {
 	curr := p.Curr
 	ret := Token{
 		Start:     p.Index(),

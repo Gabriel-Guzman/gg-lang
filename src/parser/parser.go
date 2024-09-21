@@ -36,7 +36,7 @@ func New[T any](items []T) *Parser[T] {
 	next, hasNext := iter.Peek()
 
 	return &Parser[T]{
-		iter:    iterator.New(items),
+		iter:    iter,
 		Curr:    curr,
 		HasCurr: hasCurr,
 		Next:    next,
