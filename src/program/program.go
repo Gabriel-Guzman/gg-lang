@@ -21,7 +21,7 @@ type Scope struct {
 func (s *Scope) declareVar(name string, value *variables.RuntimeValue) (*variables.Variable, error) {
 	_, ok := s.variables[name]
 	if ok {
-		return nil, ggErrs.Runtime("variable '%s' already declared in this scope\n", name)
+		return nil, ggErrs.Runtime("variable '%s' already declared in this scope\n%v", name, s)
 	}
 	v := &variables.Variable{
 		Name:         name,
@@ -89,6 +89,7 @@ func New() *Program {
 }
 
 func (p *Program) RunString(code string) error {
+	//token.Init()
 	stmts, err := token.TokenizeRunes([]rune(code))
 	if err != nil {
 		return err

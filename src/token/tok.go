@@ -10,6 +10,13 @@ const (
 	RMinus
 	RMul
 	RDiv
+	RBitwiseAnd
+	RBitwiseOr
+	RLogicalNot
+	RLogicalAnd
+	RLogicalOr
+	REqual
+	RNotEqual
 	RAssign
 	endOperators
 
@@ -64,12 +71,21 @@ func (t Type) String() string {
 
 var reservedTokens = map[Type]string{
 	// operators
-	RPlus:   "+",
-	RMinus:  "-",
-	RMul:    "*",
-	RDiv:    "/",
-	RTerm:   ";",
-	RAssign: "=",
+	RPlus:       "+",
+	RMinus:      "-",
+	RMul:        "*",
+	RDiv:        "/",
+	RBitwiseAnd: "&",
+	RBitwiseOr:  "|",
+	RLogicalNot: "!",
+	RLogicalAnd: "&&",
+	RLogicalOr:  "||",
+	REqual:      "==",
+	RNotEqual:   "!=",
+	RAssign:     "=",
+
+	// terminators
+	RTerm: ";",
 
 	// containers
 	ROpenParen:  "(",

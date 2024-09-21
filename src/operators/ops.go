@@ -41,32 +41,35 @@ func Default() *OpMap {
 		ops: make(map[string]Operator),
 	}
 
-	plus := plusInts{}
-	opm.Set("+", variables.Integer, variables.Integer, &plus)
+	opm.Set("+", variables.Integer, variables.Integer, &plusInts{})
+	opm.Set("-", variables.Integer, variables.Integer, &minusInts{})
+	opm.Set("*", variables.Integer, variables.Integer, &mulInts{})
+	opm.Set("/", variables.Integer, variables.Integer, &divInts{})
 
-	minus := minusInts{}
-	opm.Set("-", variables.Integer, variables.Integer, &minus)
-
-	mul := mulInts{}
-	opm.Set("*", variables.Integer, variables.Integer, &mul)
-
-	div := divInts{}
-	opm.Set("/", variables.Integer, variables.Integer, &div)
-
-	plusStr := plusStrings{}
-	opm.Set("+", variables.String, variables.String, &plusStr)
-
+	opm.Set("+", variables.String, variables.String, &plusStrings{})
 	opm.Set("+", variables.Integer, variables.String, &intPlusString{})
 	opm.Set("+", variables.String, variables.Integer, &stringPlusInt{})
+
+	opm.Set("==", variables.Boolean, variables.Boolean, &equalsBools{})
+	opm.Set("!=", variables.Boolean, variables.Boolean, &notEqualsBools{})
+	opm.Set("&&", variables.Boolean, variables.Boolean, &andBools{})
+	opm.Set("||", variables.Boolean, variables.Boolean, &orBools{})
+
+	opm.Set("==", variables.String, variables.String, &genEquals{})
+	opm.Set("==", variables.Integer, variables.Integer, &genEquals{})
 
 	return opm
 }
 
 var PrecedenceMap = map[string]int{
-	"*": 2,
-	"/": 2,
-	"+": 1,
-	"-": 1,
+	"*":  2,
+	"/":  2,
+	"+":  1,
+	"-":  1,
+	"&&": 0,
+	"||": 0,
+	"==": -1,
+	"!=": -1,
 }
 
 func LeftFirst(l, r string) bool {

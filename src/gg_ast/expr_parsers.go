@@ -163,7 +163,7 @@ func parseValueExpr(p *parser.Parser[token.Token]) (ValExpression, error) {
 	// add on to the initial tree
 	for {
 		op = p.Curr
-		if !op.TokenType.IsMathOperator() {
+		if !op.TokenType.IsOperator() {
 			break
 		}
 		p.Advance() // eat the operator token
@@ -258,7 +258,6 @@ func parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (ValExpres
 			return nil, ggErrs.Runtime("expected ',' or ')' after argument\n%s", p.String())
 		}
 
-		args = append(args, expr)
 	}
 
 	return &FunctionCallExpression{

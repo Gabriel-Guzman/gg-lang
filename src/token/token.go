@@ -58,14 +58,14 @@ func tokenizeStmt(par *parser.Parser[rune]) ([]Token, error) {
 			}
 			a(idTok)
 		default:
-			return nil, ggErrs.Crit("unexpected character", par.String())
+			return nil, ggErrs.Crit("unexpected character\n%s", par.String())
 		}
 	}
 
 	if len(stmt) == 0 {
 		return nil, nil
 	}
-	return nil, ggErrs.Crit("unexpected end of input", par.String())
+	return nil, ggErrs.Runtime("unexpected end of input (missing ; maybe?)\n%s", par.String())
 }
 
 type tkzr struct {

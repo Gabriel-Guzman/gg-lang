@@ -72,12 +72,10 @@ func BuildFromStatements(ins [][]token.Token) (*Ast, error) {
 		if !a.StmtPar.Curr.IsDone() {
 			return nil, ggErrs.Crit("could not finish parsing statement\n%s", a.StmtPar.String())
 		}
-		expressions = append(expressions, stmt)
-		a.StmtPar.Advance() // consume the declaration
+		a.StmtPar.Advance() // consume the statement
 
 		// function trap, note continue at end of this block
 		if stmt.Kind() == ExprFuncDecl {
-			// function trap
 			decl := stmt.(*FunctionDeclExpression)
 			exprs, err := a.parseBlockStatement()
 			if err != nil {
@@ -89,6 +87,7 @@ func BuildFromStatements(ins [][]token.Token) (*Ast, error) {
 			continue
 		}
 
+		expressions = append(expressions, stmt)
 	}
 
 	return &Ast{Body: expressions}, nil

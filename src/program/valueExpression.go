@@ -26,6 +26,16 @@ func (p *Program) evaluateValueExpr(expr gg_ast.ValExpression) (*variables.Runti
 			Val: intVal,
 			Typ: variables.Integer,
 		}, nil
+	case gg_ast.ExprBoolLiteral:
+		name := expr.(*gg_ast.Identifier).Name()
+		boolVal, err := strconv.ParseBool(name)
+		if err != nil {
+			return nil, ggErrs.Crit("unable to evaluate bool literal: %s", err.Error())
+		}
+		return &variables.RuntimeValue{
+			Val: boolVal,
+			Typ: variables.Boolean,
+		}, nil
 	case gg_ast.ExprStringLiteral:
 		return &variables.RuntimeValue{
 			Val: expr.(*gg_ast.Identifier).Name(),
