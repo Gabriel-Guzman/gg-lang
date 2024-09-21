@@ -2,10 +2,10 @@ package token
 
 import "fmt"
 
-type TokenType int
+type Type int
 
 const (
-	beginOperators TokenType = iota
+	beginOperators Type = iota
 	RPlus
 	RMinus
 	RMul
@@ -39,30 +39,30 @@ const (
 	endKeywords
 )
 
-func (t TokenType) IsOperator() bool {
+func (t Type) IsOperator() bool {
 	return t > beginOperators && t < endOperators
 }
-func (t TokenType) IsContainer() bool {
+func (t Type) IsContainer() bool {
 	return t > beginContainers && t < endContainers
 }
-func (t TokenType) IsSeparator() bool {
+func (t Type) IsSeparator() bool {
 	return t > beginSeparators && t < endSeparators
 }
-func (t TokenType) IsIdentifier() bool {
+func (t Type) IsIdentifier() bool {
 	return t > beginIdentifiers && t < endIdentifiers
 }
-func (t TokenType) IsMathOperator() bool {
+func (t Type) IsMathOperator() bool {
 	return t == RPlus || t == RMinus || t == RMul || t == RDiv
 }
 
-func (t TokenType) String() string {
+func (t Type) String() string {
 	if s, ok := reservedTokens[t]; ok {
 		return s
 	}
 	return fmt.Sprintf("TokenType(%d)", t)
 }
 
-var reservedTokens = map[TokenType]string{
+var reservedTokens = map[Type]string{
 	// operators
 	RPlus:   "+",
 	RMinus:  "-",
@@ -89,7 +89,7 @@ var reservedTokens = map[TokenType]string{
 	Function: "routine",
 }
 
-var reservedTokensMap = map[string]TokenType{}
+var reservedTokensMap = map[string]Type{}
 
 func init() {
 	for i, c := range reservedTokens {
@@ -102,25 +102,25 @@ func isReserved(in string) bool {
 	return ok
 }
 
-func isStr(str string, typ TokenType) bool {
+func isStr(str string, typ Type) bool {
 	result, ok := reservedTokensMap[str]
 	return ok && result == typ
 }
 
-func isRuneReserved(r rune, typ TokenType) bool {
+func isRuneReserved(r rune, typ Type) bool {
 	result, ok := reservedTokensMap[string(r)]
 	return ok && result == typ
 }
 
-func lookup(in string) TokenType {
+func lookup(in string) Type {
 	return reservedTokensMap[in]
 }
 
 type Token struct {
-	Start     int
-	End       int
+	Start     int `json:"-"`
+	End       int `json:"-"`
 	Str       string
-	TokenType TokenType
+	TokenType Type
 }
 
 func (t Token) String() string {

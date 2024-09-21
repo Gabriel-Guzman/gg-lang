@@ -1,15 +1,12 @@
 package gg_ast
 
 import (
-	"gg-lang/src/iterator"
 	"gg-lang/src/token"
 	"strings"
 )
 
 type Ast struct {
-	Body     []Expression
-	stmtIter *iterator.Iter[[]token.Token]
-	tokIter  *iterator.Iter[token.Token]
+	Body []Expression
 }
 
 func (a *Ast) String() string {

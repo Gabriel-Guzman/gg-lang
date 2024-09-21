@@ -17,6 +17,32 @@ type Scope struct {
 	variables map[string]*variables.Variable
 }
 
+func (s *Scope) declareVar(name string, value *variables.RuntimeValue) (*variables.Variable, error) {
+	_, ok := s.variables[name]
+	if ok {
+		return nil, ggErrs.Runtime("variable '%s' already declared in this scope\n", name)
+	}
+	v := &variables.Variable{
+		Name:  name,
+		Value: value,
+	}
+	s.variables[name] = v
+	return v, nil
+}
+
+func (s *Scope) softDeclareVar(name string, value *variables.RuntimeValue) (*variables.Variable, error) {
+	v := &variables.Variable{
+		Name:  name,
+		Value: value,
+	}
+	s.variables[name] = v
+	return v, nil
+}
+
+func (p *Program) declareVarTop(name string, value *variables.RuntimeValue) (*variables.Variable, error) {
+	return p.top.declareVar(name, value)
+}
+
 type Program struct {
 	top     *Scope
 	current *Scope
@@ -36,14 +62,19 @@ func (p *Program) String() string {
 
 func New() *Program {
 	top := &Scope{variables: make(map[string]*variables.Variable)}
+	prog := &Program{
+		top:     top,
+		current: top,
+		opMap:   operators.Default(),
+	}
 
 	for _, fn := range builtin.Defaults() {
-		top.variables[fn.Name()] = &variables.Variable{
-			Name: fn.Name(),
-			Value: &variables.RuntimeValue{
-				Val: fn,
-				Typ: variables.BuiltinFunction,
-			},
+		_, err := prog.declareVarTop(fn.Name(), &variables.RuntimeValue{
+			Val: fn,
+			Typ: variables.BuiltinFunction,
+		})
+		if err != nil {
+			return nil
 		}
 	}
 
@@ -83,14 +114,13 @@ func (p *Program) Run(ast *gg_ast.Ast) error {
 
 		case gg_ast.ExprFuncDecl:
 			decl := expr.(*gg_ast.FunctionDeclExpression)
-			newVar := variables.Variable{
-				Name: decl.Target.Raw,
-				Value: &variables.RuntimeValue{
-					Val: decl,
-					Typ: variables.Function,
-				},
+			_, err := p.declareVarTop(decl.Target.Raw, &variables.RuntimeValue{
+				Val: decl,
+				Typ: variables.Function,
+			})
+			if err != nil {
+				return err
 			}
-			p.top.variables[newVar.Name] = &newVar
 
 		case gg_ast.ExprFunctionCall:
 			call := expr.(*gg_ast.FunctionCallExpression)
@@ -140,9 +170,8 @@ func (p *Program) findVariable(name string) *variables.Variable {
 }
 
 func (p *Program) evaluateAssignment(expr *gg_ast.AssignmentExpression) error {
-	switch expr.Target.Kind() {
-	case gg_ast.ExprVariable:
-	default:
+	if expr.Target.Kind() != gg_ast.ExprVariable {
+
 		return ggErrs.Runtime("invalid assignment target: %s", expr.Target.Raw)
 	}
 
@@ -161,9 +190,6 @@ func (p *Program) evaluateAssignment(expr *gg_ast.AssignmentExpression) error {
 		return nil
 	}
 
-	newVar := variables.Variable{Name: expr.Target.Raw}
-	newVar.Value = val
-
-	p.current.variables[newVar.Name] = &newVar
-	return nil
+	_, err = p.current.softDeclareVar(expr.Target.Raw, val)
+	return err
 }

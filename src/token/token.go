@@ -99,7 +99,7 @@ func TokenizeRunes(ins []rune) ([][]Token, error) {
 	return stmts, nil
 }
 
-func parseReservedSingleRuneTok(p *parser.Parser[rune], tokType TokenType) Token {
+func parseReservedSingleRuneTok(p *parser.Parser[rune], tokType Type) Token {
 	curr := p.Curr
 	ret := Token{
 		Start:     p.Index(),

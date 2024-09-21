@@ -26,11 +26,11 @@ func Exec(filename string) {
 	fmt.Printf("Parsed %d statements\n\n", len(stmts))
 	stmtsJson, err := json.MarshalIndent(stmts, "", "    ")
 	ggErrs.Handle(err)
+
 	err = os.WriteFile("out/stmts.json", stmtsJson, 0644)
 	ggErrs.Handle(err)
 
 	ast, err := gg_ast.BuildFromStatements(stmts)
-	//err = ast.ParseStmts(stmts)
 	ggErrs.Handle(err)
 	if err != nil {
 		return

@@ -253,7 +253,7 @@ func parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (IValExpr,
 			p.Advance() // consume the ')'
 			break
 		}
-	
+
 		if !advanceIfCurrIs(p, token.RComma) {
 			return nil, ggErrs.Runtime("expected ',' or ')' after argument\n%s", p.String())
 		}
@@ -268,7 +268,7 @@ func parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (IValExpr,
 }
 
 // Advances the parser if the current token matches the given token type
-func advanceIfCurrIs(p *parser.Parser[token.Token], tt token.TokenType) bool {
+func advanceIfCurrIs(p *parser.Parser[token.Token], tt token.Type) bool {
 	if p.HasCurr && p.Curr.TokenType == tt {
 
 		p.Advance()
