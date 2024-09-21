@@ -32,7 +32,7 @@ const (
 	endSeparators
 
 	beginIdentifiers
-	Var
+	Ident
 	IntLiteral
 	StringLiteral
 	TrueLiteral
@@ -249,7 +249,7 @@ func parseIdentifier(p *parser.Parser[rune]) (Token, error) {
 		Start:     start,
 		End:       p.Index() + 1,
 		Str:       id,
-		TokenType: Var,
+		TokenType: Ident,
 	}, nil
 }
 

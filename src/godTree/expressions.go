@@ -48,7 +48,7 @@ func newBinaryExpression(lhs IValExpr, operator string, rhs IValExpr) *BinaryExp
 
 // a(b, c)
 type FunctionCallExpression struct {
-	Id   Identifier
+	Id   *Identifier
 	Args []IValExpr
 }
 
@@ -57,21 +57,21 @@ func (fce *FunctionCallExpression) Kind() ExpressionKind { return ExprFunctionCa
 
 // a = 32
 type AssignmentExpression struct {
-	Target Identifier
+	Target *Identifier
 	Value  IValExpr
 }
 
 func (ae *AssignmentExpression) Kind() ExpressionKind { return ExprAssignment }
 func newAssignmentExpression(target *Identifier, value IValExpr) *AssignmentExpression {
 	return &AssignmentExpression{
-		Target: *target,
+		Target: target,
 		Value:  value,
 	}
 }
 
 // routine a(b, c) {
 type FunctionDeclExpression struct {
-	Target Identifier
+	Target *Identifier
 	Params []string
 	Value  []Expression
 }
@@ -99,7 +99,7 @@ func ExprString(e Expression, d int, sb *strings.Builder) {
 		ExprString(val.Value, d+1, sb)
 		sb.WriteString("\n")
 		w(" to")
-		ExprString(&val.Target, d+1, sb)
+		ExprString(val.Target, d+1, sb)
 	case ExprBinary:
 		val := e.(*BinaryExpression)
 		w("operation of ")

@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"gg-lang/src/iterator"
 )
 
@@ -52,13 +51,4 @@ func (p *Parser[T]) Advance() {
 	p.HasCurr = hasCurr
 	p.Next = next
 	p.HasNext = hasNext
-}
-
-func (p *Parser[T]) AdvExpect(test func(in T) bool) error {
-	if !test(p.Next) {
-		return fmt.Errorf("expected %s, got", p.iter.String())
-	}
-
-	p.Advance()
-	return nil
 }

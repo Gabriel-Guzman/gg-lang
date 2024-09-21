@@ -101,7 +101,7 @@ func newIdentifier(t tokenizer.Token) (*Identifier, error) {
 	switch t.TokenType {
 	case tokenizer.IntLiteral:
 		ik = IdExprNumber
-	case tokenizer.Var:
+	case tokenizer.Ident:
 		ik = IdExprVariable
 	case tokenizer.StringLiteral:
 		ik = IdExprString

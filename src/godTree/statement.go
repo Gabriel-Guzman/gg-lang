@@ -173,7 +173,7 @@ func parseFuncDecl(tokIter *iterator.Iter[tokenizer.Token]) (*FunctionDeclExpres
 		if parm.TokenType == tokenizer.RComma {
 			continue
 		}
-		if parm.TokenType != tokenizer.Var {
+		if parm.TokenType != tokenizer.Ident {
 			return nil, ggErrs.Runtime("Unexpected token\n%s", tokIter.String())
 		}
 

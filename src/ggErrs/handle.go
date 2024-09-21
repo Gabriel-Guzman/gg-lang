@@ -9,7 +9,7 @@ func Handle(err error) {
 	if err == nil {
 		return
 	}
-	var chillErr *ChillErr
+	var chillErr *RuntimeErr
 	var critErr *CritErr
 	switch {
 	case errors.As(err, &chillErr):
