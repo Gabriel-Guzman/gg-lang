@@ -46,6 +46,11 @@ func Default() *OpMap {
 	opm.Set("*", variables.Integer, variables.Integer, &mulInts{})
 	opm.Set("/", variables.Integer, variables.Integer, &divInts{})
 
+	opm.Set("<", variables.Integer, variables.Integer, &lessThanInts{})
+	opm.Set(">", variables.Integer, variables.Integer, &greaterThanInts{})
+	opm.Set("<=", variables.Integer, variables.Integer, &lessThanEqualInts{})
+	opm.Set(">=", variables.Integer, variables.Integer, &greaterThanEqualInts{})
+
 	opm.Set("+", variables.String, variables.String, &plusStrings{})
 	opm.Set("+", variables.Integer, variables.String, &intPlusString{})
 	opm.Set("+", variables.String, variables.Integer, &stringPlusInt{})
@@ -57,7 +62,6 @@ func Default() *OpMap {
 
 	opm.Set("==", variables.String, variables.String, &genEquals{})
 	opm.Set("==", variables.Integer, variables.Integer, &genEquals{})
-
 	return opm
 }
 
@@ -70,6 +74,10 @@ var PrecedenceMap = map[string]int{
 	"||": 0,
 	"==": -1,
 	"!=": -1,
+	"<":  -1,
+	">":  -1,
+	"<=": -1,
+	">=": -1,
 }
 
 func LeftFirst(l, r string) bool {

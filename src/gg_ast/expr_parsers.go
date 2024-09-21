@@ -20,15 +20,16 @@ The parser should be at its initial state, i.e. with the current index set to 0 
 pointing to the first token in the expression.
 After a successful parse, the parser should be pointing to the token after the expression
 */
-func parseTopLevelExpr(p *parser.Parser[token.Token]) (Expression, error) {
+// a statement is a function call, declaration, assignment expression, or a for loop expression
+// it is up to the builder to disallow these expressions if it's not parsing the top level
+func parseStatement(p *parser.Parser[token.Token]) (Expression, error) {
 	// first expression should be an identifier, a reserved keyword, or a value expression
 	// check reserved keywords first
 	if p.Curr.TokenType == token.Function {
-		funcDecl, err := parseFuncDecl(p)
-		if err != nil {
-			return nil, err
-		}
-		return funcDecl, nil
+		return parseFuncDecl(p)
+	}
+	if p.Curr.TokenType == token.For {
+		return parseForLoopExpr(p)
 	}
 
 	// now it could be a function call or an assignment expression, both of which
@@ -63,6 +64,23 @@ func parseAssignmentExpr(target *Identifier, p *parser.Parser[token.Token]) (*As
 	}
 
 	return &AssignmentExpression{Target: target, Value: expr}, nil
+}
+
+func parseForLoopExpr(p *parser.Parser[token.Token]) (*ForLoopExpression, error) {
+	if !advanceIfCurrIs(p, token.For) { // eat the for keyword
+		return nil, ggErrs.Crit("expected 'for' keyword in expression parser\n%s", p.String())
+	}
+
+	condition, err := parseValueExpr(p)
+	if err != nil {
+		return nil, err
+	}
+
+	if !advanceIfCurrIs(p, token.OpenBrace) {
+		return nil, ggErrs.Syntax("expected '{' after for loop condition\n%s", p.String())
+	}
+
+	return &ForLoopExpression{Condition: condition}, nil
 }
 
 func parseFuncDecl(p *parser.Parser[token.Token]) (*FunctionDeclExpression, error) {

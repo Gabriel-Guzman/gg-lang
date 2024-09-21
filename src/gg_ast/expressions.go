@@ -62,6 +62,14 @@ type FunctionDeclExpression struct {
 
 func (fde *FunctionDeclExpression) Kind() ExpressionKind { return ExprFuncDecl }
 
+// for i != 10 {
+type ForLoopExpression struct {
+	Condition ValExpression
+	Body      []Expression
+}
+
+func (fle *ForLoopExpression) Kind() ExpressionKind { return ExprForLoop }
+
 func ind(count int) string {
 	var spaces []rune
 	for i := 0; i < count*4; i++ {

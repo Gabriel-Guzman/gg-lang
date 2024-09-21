@@ -17,6 +17,10 @@ const (
 	LogicalOr
 	Equal
 	NotEqual
+	LessThan
+	LessThanEqual
+	GreaterThan
+	GreaterThanEqual
 	Assign
 	endOperators
 
@@ -43,6 +47,7 @@ const (
 
 	beginKeywords
 	Function
+	For
 	endKeywords
 )
 
@@ -71,18 +76,22 @@ func (t Type) String() string {
 
 var reservedTokens = map[Type]string{
 	// operators
-	Plus:       "+",
-	Minus:      "-",
-	Mul:        "*",
-	Div:        "/",
-	BitwiseAnd: "&",
-	BitwiseOr:  "|",
-	LogicalNot: "!",
-	LogicalAnd: "&&",
-	LogicalOr:  "||",
-	Equal:      "==",
-	NotEqual:   "!=",
-	Assign:     "=",
+	Plus:             "+",
+	Minus:            "-",
+	Mul:              "*",
+	Div:              "/",
+	BitwiseAnd:       "&",
+	BitwiseOr:        "|",
+	LogicalNot:       "!",
+	LogicalAnd:       "&&",
+	LogicalOr:        "||",
+	Equal:            "==",
+	NotEqual:         "!=",
+	LessThan:         "<",
+	LessThanEqual:    "<=",
+	GreaterThan:      ">",
+	GreaterThanEqual: ">=",
+	Assign:           "=",
 
 	// terminators
 	Term: ";",
@@ -103,6 +112,7 @@ var reservedTokens = map[Type]string{
 
 	// keyword
 	Function: "routine",
+	For:      "for",
 }
 
 var reservedTokensMap = map[string]Type{}

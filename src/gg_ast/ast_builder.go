@@ -23,7 +23,7 @@ func (a *astBuilder) parseBlockStatement() ([]Expression, error) {
 			return expressions, nil
 		}
 
-		stmt, err := parseTopLevelExpr(tokParser)
+		stmt, err := parseStatement(tokParser)
 		if _, ok := stmt.(*FunctionDeclExpression); ok {
 			return nil, ggErrs.Runtime("function declaration inside block statement is not allowed\n%s", tokParser.String())
 		}
@@ -65,7 +65,7 @@ func BuildFromStatements(ins [][]token.Token) (*Ast, error) {
 
 	var expressions []Expression
 	for a.StmtPar.HasCurr {
-		stmt, err := parseTopLevelExpr(a.StmtPar.Curr)
+		stmt, err := parseStatement(a.StmtPar.Curr)
 		if err != nil {
 			return nil, err
 		}
@@ -84,6 +84,17 @@ func BuildFromStatements(ins [][]token.Token) (*Ast, error) {
 			decl.Value = exprs
 
 			expressions = append(expressions, decl)
+			continue
+		}
+		if stmt.Kind() == ExprForLoop {
+			loop := stmt.(*ForLoopExpression)
+			exprs, err := a.parseBlockStatement()
+			if err != nil {
+				return nil, err
+			}
+			loop.Body = exprs
+
+			expressions = append(expressions, loop)
 			continue
 		}
 

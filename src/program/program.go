@@ -136,6 +136,30 @@ func (p *Program) RunExpression(expr gg_ast.Expression) error {
 			return err
 		}
 
+	case gg_ast.ExprForLoop:
+		loop := expr.(*gg_ast.ForLoopExpression)
+		p.enterNewScope()
+		defer p.exitScope()
+		for {
+			val, err := p.evaluateValueExpr(loop.Condition)
+			if err != nil {
+				return err
+			}
+			if val.Typ != variables.Boolean {
+				return ggErrs.Runtime("loop condition must evaluate to bool\n%+v", expr)
+			}
+
+			if !val.Val.(bool) {
+				break
+			}
+			for _, loopExpr := range loop.Body {
+				err := p.RunExpression(loopExpr)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
 	case gg_ast.ExprFunctionCall:
 		call := expr.(*gg_ast.FunctionCallExpression)
 		err := p.call(call)

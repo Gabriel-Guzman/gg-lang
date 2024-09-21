@@ -45,3 +45,35 @@ func (d *divInts) Evaluate(left, right interface{}) interface{} {
 func (d *divInts) ResultType() variables.VarType {
 	return variables.Integer
 }
+
+// int < int
+type lessThanInts struct{}
+
+func (l *lessThanInts) Evaluate(left, right interface{}) interface{} {
+	return left.(int) < right.(int)
+}
+func (l *lessThanInts) ResultType() variables.VarType { return variables.Boolean }
+
+// int > int
+type greaterThanInts struct{}
+
+func (g *greaterThanInts) Evaluate(left, right interface{}) interface{} {
+	return left.(int) > right.(int)
+}
+func (g *greaterThanInts) ResultType() variables.VarType { return variables.Boolean }
+
+// int <= int
+type lessThanEqualInts struct{}
+
+func (l *lessThanEqualInts) Evaluate(left, right interface{}) interface{} {
+	return left.(int) <= right.(int)
+}
+func (l *lessThanEqualInts) ResultType() variables.VarType { return variables.Boolean }
+
+// int >= int
+type greaterThanEqualInts struct{}
+
+func (g *greaterThanEqualInts) Evaluate(left, right interface{}) interface{} {
+	return left.(int) >= right.(int)
+}
+func (g *greaterThanEqualInts) ResultType() variables.VarType { return variables.Boolean }
