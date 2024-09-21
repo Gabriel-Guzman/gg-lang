@@ -6,31 +6,31 @@ type Type int
 
 const (
 	beginOperators Type = iota
-	RPlus
-	RMinus
-	RMul
-	RDiv
-	RBitwiseAnd
-	RBitwiseOr
-	RLogicalNot
-	RLogicalAnd
-	RLogicalOr
-	REqual
-	RNotEqual
-	RAssign
+	Plus
+	Minus
+	Mul
+	Div
+	BitwiseAnd
+	BitwiseOr
+	LogicalNot
+	LogicalAnd
+	LogicalOr
+	Equal
+	NotEqual
+	Assign
 	endOperators
 
 	beginContainers
-	ROpenParen
-	RCloseParen
-	ROpenBrace
-	RCloseBrace
-	RQuote
+	OpenParen
+	CloseParen
+	OpenBrace
+	CloseBrace
+	Quote
 	endContainers
 
 	beginSeparators
-	RTerm
-	RComma
+	Term
+	Comma
 	endSeparators
 
 	beginIdentifiers
@@ -59,7 +59,7 @@ func (t Type) IsIdentifier() bool {
 	return t > beginIdentifiers && t < endIdentifiers
 }
 func (t Type) IsMathOperator() bool {
-	return t == RPlus || t == RMinus || t == RMul || t == RDiv
+	return t == Plus || t == Minus || t == Mul || t == Div
 }
 
 func (t Type) String() string {
@@ -71,31 +71,31 @@ func (t Type) String() string {
 
 var reservedTokens = map[Type]string{
 	// operators
-	RPlus:       "+",
-	RMinus:      "-",
-	RMul:        "*",
-	RDiv:        "/",
-	RBitwiseAnd: "&",
-	RBitwiseOr:  "|",
-	RLogicalNot: "!",
-	RLogicalAnd: "&&",
-	RLogicalOr:  "||",
-	REqual:      "==",
-	RNotEqual:   "!=",
-	RAssign:     "=",
+	Plus:       "+",
+	Minus:      "-",
+	Mul:        "*",
+	Div:        "/",
+	BitwiseAnd: "&",
+	BitwiseOr:  "|",
+	LogicalNot: "!",
+	LogicalAnd: "&&",
+	LogicalOr:  "||",
+	Equal:      "==",
+	NotEqual:   "!=",
+	Assign:     "=",
 
 	// terminators
-	RTerm: ";",
+	Term: ";",
 
 	// containers
-	ROpenParen:  "(",
-	RCloseParen: ")",
-	ROpenBrace:  "{",
-	RCloseBrace: "}",
-	RQuote:      "\"",
+	OpenParen:  "(",
+	CloseParen: ")",
+	OpenBrace:  "{",
+	CloseBrace: "}",
+	Quote:      "\"",
 
 	// separators
-	RComma: ",",
+	Comma: ",",
 
 	// built-in literals
 	TrueLiteral:  "true",
@@ -116,11 +116,6 @@ func init() {
 func isReserved(in string) bool {
 	_, ok := reservedTokensMap[in]
 	return ok
-}
-
-func isStr(str string, typ Type) bool {
-	result, ok := reservedTokensMap[str]
-	return ok && result == typ
 }
 
 func isRuneReserved(r rune, typ Type) bool {

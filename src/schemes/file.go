@@ -46,5 +46,6 @@ func Exec(filename string) {
 
 	err = os.WriteFile("out/ast.json", tree, 0644)
 	ggErrs.Handle(err)
+
 	fmt.Println("AST saved to out/ast.json")
 }

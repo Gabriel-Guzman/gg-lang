@@ -18,10 +18,10 @@ func tokenizeStmt(par *parser.Parser[rune]) ([]Token, error) {
 		switch {
 		case shouldIgnore(par.Curr):
 			tk.Par.Advance()
-		case isRuneReserved(tk.Par.Curr, RTerm): // begin reserved characters
+		case isRuneReserved(tk.Par.Curr, Term): // begin reserved characters
 			tk.Par.Advance()
 			return stmt, nil
-		case isRuneReserved(tk.Par.Curr, RQuote):
+		case isRuneReserved(tk.Par.Curr, Quote):
 			strTok, err := parseStringLiteral(par)
 			if err != nil {
 				return nil, err
@@ -33,18 +33,18 @@ func tokenizeStmt(par *parser.Parser[rune]) ([]Token, error) {
 				return nil, err
 			}
 			a(tok)
-		case isRuneReserved(tk.Par.Curr, ROpenBrace): // begin containers
-			a(parseReservedSingleRuneTok(par, ROpenBrace))
+		case isRuneReserved(tk.Par.Curr, OpenBrace): // begin containers
+			a(parseReservedSingleRuneTok(par, OpenBrace))
 			return stmt, nil
-		case isRuneReserved(tk.Par.Curr, RCloseBrace):
-			a(parseReservedSingleRuneTok(par, RCloseBrace))
+		case isRuneReserved(tk.Par.Curr, CloseBrace):
+			a(parseReservedSingleRuneTok(par, CloseBrace))
 			return stmt, nil
-		case isRuneReserved(tk.Par.Curr, RComma):
-			a(parseReservedSingleRuneTok(par, RComma))
-		case isRuneReserved(tk.Par.Curr, ROpenParen):
-			a(parseReservedSingleRuneTok(par, ROpenParen))
-		case isRuneReserved(tk.Par.Curr, RCloseParen):
-			a(parseReservedSingleRuneTok(par, RCloseParen))
+		case isRuneReserved(tk.Par.Curr, Comma):
+			a(parseReservedSingleRuneTok(par, Comma))
+		case isRuneReserved(tk.Par.Curr, OpenParen):
+			a(parseReservedSingleRuneTok(par, OpenParen))
+		case isRuneReserved(tk.Par.Curr, CloseParen):
+			a(parseReservedSingleRuneTok(par, CloseParen))
 		case uni.IsDigit(par.Curr):
 			numTok, err := parseNumLiteral(par)
 			if err != nil {
@@ -234,7 +234,7 @@ func parseStringLiteral(p *parser.Parser[rune]) (Token, error) {
 	if !p.HasCurr {
 		return Token{}, ggErrs.Crit("string literal parser called with nothing in parser\n%s", p.String())
 	}
-	if string(p.Curr) != reservedTokens[RQuote] {
+	if string(p.Curr) != reservedTokens[Quote] {
 		return Token{}, ggErrs.Crit("string literal parser called on non-quote\n%s", p.String())
 	}
 
@@ -247,7 +247,7 @@ func parseStringLiteral(p *parser.Parser[rune]) (Token, error) {
 		if !p.HasCurr {
 			return Token{}, ggErrs.Runtime("unterminated string literal\n%s", p.String())
 		}
-		if string(p.Curr) == reservedTokens[RQuote] {
+		if string(p.Curr) == reservedTokens[Quote] {
 			p.Advance() // consume closing quote
 			break
 		}

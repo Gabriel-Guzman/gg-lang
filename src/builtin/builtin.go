@@ -15,7 +15,6 @@ type Print struct{}
 func (p *Print) Name() string {
 	return "print"
 }
-
 func (p *Print) Call(args ...*variables.RuntimeValue) *variables.RuntimeValue {
 	for _, arg := range args {
 		fmt.Println(arg.Val)

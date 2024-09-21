@@ -14,7 +14,7 @@ func (a *astBuilder) parseBlockStatement() ([]Expression, error) {
 	var expressions []Expression
 	for a.StmtPar.HasCurr {
 		tokParser := a.StmtPar.Curr
-		if tokParser.Curr.TokenType == token.RCloseBrace {
+		if tokParser.Curr.TokenType == token.CloseBrace {
 			if tokParser.HasNext {
 				return nil, ggErrs.Crit("unexpected token after closing brace - check tokenizer\n%s", tokParser.String())
 			}

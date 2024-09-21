@@ -39,7 +39,7 @@ func parseTopLevelExpr(p *parser.Parser[token.Token]) (Expression, error) {
 		return nil, err
 	}
 
-	if p.Curr.TokenType == token.RAssign {
+	if p.Curr.TokenType == token.Assign {
 		p.Advance()
 		return parseAssignmentExpr(id, p)
 	}
@@ -73,7 +73,7 @@ func parseFuncDecl(p *parser.Parser[token.Token]) (*FunctionDeclExpression, erro
 		return nil, err
 	}
 
-	if !advanceIfCurrIs(p, token.ROpenParen) {
+	if !advanceIfCurrIs(p, token.OpenParen) {
 		return nil, ggErrs.Runtime("expected '(' after function name\n%s", p.String())
 	}
 
@@ -83,12 +83,12 @@ func parseFuncDecl(p *parser.Parser[token.Token]) (*FunctionDeclExpression, erro
 			return nil, ggErrs.Runtime("Unexpected end of param list\n%s", p.String())
 		}
 		param := p.Curr
-		if param.TokenType == token.RCloseParen {
+		if param.TokenType == token.CloseParen {
 			p.Advance() // eat the closing parenthesis ')'
 			break
 		}
-		if param.TokenType == token.RComma {
-			p.Advance()
+		if param.TokenType == token.Comma {
+			p.Advance() // eat the comma
 			continue
 		}
 		if param.TokenType != token.Ident {
@@ -99,7 +99,7 @@ func parseFuncDecl(p *parser.Parser[token.Token]) (*FunctionDeclExpression, erro
 		p.Advance()
 	}
 
-	if !advanceIfCurrIs(p, token.ROpenBrace) {
+	if !advanceIfCurrIs(p, token.OpenBrace) {
 		return nil, ggErrs.Runtime("expected '{' after function declaration\n%s", p.String())
 	}
 
@@ -198,7 +198,7 @@ func parsePrimaryExpr(p *parser.Parser[token.Token]) (ValExpression, error) {
 	}
 
 	// unary operators
-	if p.Curr.TokenType == token.RMinus {
+	if p.Curr.TokenType == token.Minus {
 		p.Advance()
 		id, err := parseIdentifier(p)
 		if err != nil {
@@ -219,7 +219,7 @@ func parsePrimaryExpr(p *parser.Parser[token.Token]) (ValExpression, error) {
 			return nil, err
 		}
 
-		if p.Curr.TokenType == token.ROpenParen {
+		if p.Curr.TokenType == token.OpenParen {
 			return parseFuncCallExpr(id, p)
 		} else {
 			return id, nil
@@ -228,10 +228,10 @@ func parsePrimaryExpr(p *parser.Parser[token.Token]) (ValExpression, error) {
 }
 
 func parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (ValExpression, error) {
-	if !advanceIfCurrIs(p, token.ROpenParen) {
+	if !advanceIfCurrIs(p, token.OpenParen) {
 		return nil, ggErrs.Runtime("expected '(' after function name\n%s", p.String())
 	}
-	if p.Curr.TokenType == token.RCloseParen {
+	if p.Curr.TokenType == token.CloseParen {
 		p.Advance() // consume the ')'
 		return &FunctionCallExpression{Id: id}, nil
 	}
@@ -249,12 +249,12 @@ func parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (ValExpres
 		args = append(args, expr)
 
 		arg := p.Curr
-		if arg.TokenType == token.RCloseParen {
+		if arg.TokenType == token.CloseParen {
 			p.Advance() // consume the ')'
 			break
 		}
 
-		if !advanceIfCurrIs(p, token.RComma) {
+		if !advanceIfCurrIs(p, token.Comma) {
 			return nil, ggErrs.Runtime("expected ',' or ')' after argument\n%s", p.String())
 		}
 
