@@ -22,6 +22,10 @@ func (p *Parser[T]) SetStringer(s func(in T) string) {
 	p.iter.Stringer = s
 }
 
+func (p *Parser[T]) IsDone() bool {
+	return !p.HasCurr
+}
+
 func (p *Parser[T]) String() string {
 	return p.iter.String()
 }

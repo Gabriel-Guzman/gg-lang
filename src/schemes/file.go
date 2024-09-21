@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"gg-lang/src/ggErrs"
-	"gg-lang/src/godTree"
+	"gg-lang/src/gg_ast"
 	"gg-lang/src/program"
-	"gg-lang/src/tokenizer"
+	"gg-lang/src/token"
 	"os"
 )
 
@@ -19,7 +19,7 @@ func Exec(filename string) {
 		panic(err)
 	}
 
-	stmts, err := tokenizer.TokenizeRunes([]rune(string(out)))
+	stmts, err := token.TokenizeRunes([]rune(string(out)))
 	if err != nil {
 		panic(err)
 	}
@@ -29,7 +29,7 @@ func Exec(filename string) {
 	err = os.WriteFile("out/stmts.json", stmtsJson, 0644)
 	ggErrs.Handle(err)
 
-	ast := godTree.New()
+	ast := gg_ast.New()
 	err = ast.ParseStmts(stmts)
 	ggErrs.Handle(err)
 	if err != nil {

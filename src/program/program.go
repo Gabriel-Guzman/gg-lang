@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"gg-lang/src/builtin"
 	"gg-lang/src/ggErrs"
-	"gg-lang/src/godTree"
+	"gg-lang/src/gg_ast"
 	"gg-lang/src/operators"
-	"gg-lang/src/tokenizer"
+	"gg-lang/src/token"
 	"gg-lang/src/variables"
 	"os"
 	"strings"
@@ -55,13 +55,12 @@ func New() *Program {
 }
 
 func (p *Program) RunString(code string) error {
-	stmts, err := tokenizer.TokenizeRunes([]rune(code))
+	stmts, err := token.TokenizeRunes([]rune(code))
 	if err != nil {
 		return err
 	}
 
-	ast := godTree.New()
-	err = ast.ParseStmts(stmts)
+	ast, err := gg_ast.BuildFromStatements(stmts)
 	ggErrs.Handle(err)
 	if err != nil {
 		return err
@@ -74,16 +73,16 @@ func (p *Program) RunString(code string) error {
 	return nil
 }
 
-func (p *Program) Run(ast *godTree.Ast) error {
+func (p *Program) Run(ast *gg_ast.Ast) error {
 	for i, expr := range ast.Body {
 		switch expr.Kind() {
-		case godTree.ExprAssignment:
-			if err := p.evaluateAssignment(expr.(*godTree.AssignmentExpression)); err != nil {
+		case gg_ast.ExprAssignment:
+			if err := p.evaluateAssignment(expr.(*gg_ast.AssignmentExpression)); err != nil {
 				return ggErrs.Runtime("expr %d: %v", i, err)
 			}
 
-		case godTree.ExprFuncDecl:
-			decl := expr.(*godTree.FunctionDeclExpression)
+		case gg_ast.ExprFuncDecl:
+			decl := expr.(*gg_ast.FunctionDeclExpression)
 			newVar := variables.Variable{
 				Name: decl.Target.Raw,
 				Value: &variables.RuntimeValue{
@@ -93,9 +92,9 @@ func (p *Program) Run(ast *godTree.Ast) error {
 			}
 			p.top.variables[newVar.Name] = &newVar
 
-		case godTree.ExprFunctionCall:
-			fcall := expr.(*godTree.FunctionCallExpression)
-			err := p.funcCall(fcall)
+		case gg_ast.ExprFunctionCall:
+			call := expr.(*gg_ast.FunctionCallExpression)
+			err := p.funcCall(call)
 			if err != nil {
 				return ggErrs.Runtime("expr %d: %v", i, err)
 			}
@@ -140,14 +139,14 @@ func (p *Program) findVariable(name string) *variables.Variable {
 	}
 }
 
-func (p *Program) evaluateAssignment(expr *godTree.AssignmentExpression) error {
+func (p *Program) evaluateAssignment(expr *gg_ast.AssignmentExpression) error {
 	switch expr.Target.Kind() {
-	case godTree.ExprVariable:
+	case gg_ast.ExprVariable:
 	default:
 		return ggErrs.Runtime("invalid assignment target: %s", expr.Target.Raw)
 	}
 
-	if expr.Value.Kind() > godTree.SentinelValueExpression {
+	if expr.Value.Kind() > gg_ast.SentinelValueExpression {
 		return ggErrs.Runtime("cannot make value for %v", expr)
 	}
 

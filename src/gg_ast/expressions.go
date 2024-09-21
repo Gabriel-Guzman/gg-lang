@@ -1,5 +1,5 @@
 //go:generate stringer -type=IdExprKind
-package godTree
+package gg_ast
 
 import (
 	"fmt"
@@ -29,10 +29,9 @@ func (id *Identifier) Kind() ExpressionKind { return ExpressionKind(id.idKind) }
 
 // a + b
 type BinaryExpression struct {
-	Lhs  IValExpr
-	Op   string
-	Rhs  IValExpr
-	Type ExpressionKind
+	Lhs IValExpr
+	Op  string
+	Rhs IValExpr
 }
 
 func (be *BinaryExpression) Name() string         { return be.Op }

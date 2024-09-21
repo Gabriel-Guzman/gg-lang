@@ -1,16 +1,16 @@
-package godTree
+package gg_ast
 
 import (
 	"gg-lang/src/ggErrs"
 	"gg-lang/src/iterator"
-	"gg-lang/src/tokenizer"
+	"gg-lang/src/token"
 	"strings"
 )
 
 type Ast struct {
 	Body     []Expression
-	stmtIter *iterator.Iter[[]tokenizer.Token]
-	tokIter  *iterator.Iter[tokenizer.Token]
+	stmtIter *iterator.Iter[[]token.Token]
+	tokIter  *iterator.Iter[token.Token]
 }
 
 func (a *Ast) nextStmt() bool {
@@ -36,11 +36,11 @@ func New() *Ast {
 	return a
 }
 
-func tokStringer(t tokenizer.Token) string {
+func tokStringer(t token.Token) string {
 	return t.Str
 }
 
-func (a *Ast) ParseStmts(tokens [][]tokenizer.Token) error {
+func (a *Ast) ParseStmts(tokens [][]token.Token) error {
 	a.stmtIter = iterator.New(tokens)
 
 outer:
@@ -82,7 +82,7 @@ func (a *Ast) funcTrap(casted *FunctionDeclExpression) error {
 			return ggErrs.Runtime("unexpected end of token iter in func trap\n%s", a.tokIter.String())
 		}
 
-		if curr.TokenType == tokenizer.RCloseBrace {
+		if curr.TokenType == token.RCloseBrace {
 			a.Body = append(a.Body, casted)
 			return nil
 		}
@@ -96,18 +96,18 @@ func (a *Ast) funcTrap(casted *FunctionDeclExpression) error {
 	}
 }
 
-func newIdentifier(t tokenizer.Token) (*Identifier, error) {
+func newIdentifier(t token.Token) (*Identifier, error) {
 	var ik IdExprKind
 	switch t.TokenType {
-	case tokenizer.IntLiteral:
+	case token.IntLiteral:
 		ik = IdExprNumber
-	case tokenizer.Ident:
+	case token.Ident:
 		ik = IdExprVariable
-	case tokenizer.StringLiteral:
+	case token.StringLiteral:
 		ik = IdExprString
-	case tokenizer.TrueLiteral:
+	case token.TrueLiteral:
 		ik = IdExprBool
-	case tokenizer.FalseLiteral:
+	case token.FalseLiteral:
 		ik = IdExprBool
 	default:
 		return nil, ggErrs.Runtime("invalid identifier %s", t.Str)

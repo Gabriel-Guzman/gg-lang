@@ -1,12 +1,12 @@
-package godTree
+package gg_ast
 
 import (
 	"gg-lang/src/ggErrs"
 	"gg-lang/src/iterator"
-	"gg-lang/src/tokenizer"
+	"gg-lang/src/token"
 )
 
-func parseStmt(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
+func parseStmt(tokIter *iterator.Iter[token.Token]) (Expression, error) {
 	// move to first token in stmt
 	curr, exists := tokIter.Next()
 	if !exists {
@@ -14,7 +14,7 @@ func parseStmt(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
 	}
 
 	// check for reserved keywords
-	if curr.TokenType == tokenizer.Function {
+	if curr.TokenType == token.Function {
 		funcDecl, err := parseFuncDecl(tokIter)
 		return funcDecl, err
 	}
@@ -33,7 +33,7 @@ func parseStmt(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
 	nextTokType := next.TokenType
 
 	switch {
-	case nextTokType == tokenizer.RAssign:
+	case nextTokType == token.RAssign:
 		tokIter.Next() // consume the '=' token
 		id, ok := firstSingleValueExpr.(*Identifier)
 		if !ok {
@@ -48,7 +48,7 @@ func parseStmt(tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
 }
 
 // tokIter should be pointing to the token right before the value expression
-func parseAssignmentExpr(id *Identifier, tokIter *iterator.Iter[tokenizer.Token]) (Expression, error) {
+func parseAssignmentExpr(id *Identifier, tokIter *iterator.Iter[token.Token]) (Expression, error) {
 	expr, err := parseValueExpr(tokIter)
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func parseAssignmentExpr(id *Identifier, tokIter *iterator.Iter[tokenizer.Token]
 }
 
 // tokIter should be pointing to the token right before the value expression
-func parseValueExpr(iter *iterator.Iter[tokenizer.Token]) (IValExpr, error) {
+func parseValueExpr(iter *iterator.Iter[token.Token]) (IValExpr, error) {
 	startingIndex := iter.Index()
 	// first word in value
 	firstExpr, err := parseSingleValueExpr(iter)
@@ -76,7 +76,7 @@ func parseValueExpr(iter *iterator.Iter[tokenizer.Token]) (IValExpr, error) {
 
 	// operator, try for binary expression
 	if afterParen.TokenType.IsOperator() {
-		if afterParen.TokenType == tokenizer.RAssign {
+		if afterParen.TokenType == token.RAssign {
 			return nil, ggErrs.Runtime("invalid = in value expression: %s", iter.String())
 		}
 
@@ -93,12 +93,12 @@ func parseValueExpr(iter *iterator.Iter[tokenizer.Token]) (IValExpr, error) {
 }
 
 // iter should be pointing to right before the first tok in the value expression
-func parseSingleValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (IValExpr, error) {
+func parseSingleValueExpr(tokIter *iterator.Iter[token.Token]) (IValExpr, error) {
 	// first word in value
 	firstTok, exists := tokIter.Next()
 
 	if firstTok.TokenType.IsOperator() {
-		if firstTok.TokenType == tokenizer.RMinus {
+		if firstTok.TokenType == token.RMinus {
 			// unary minus
 			next, err := parseSingleValueExpr(tokIter)
 			if err != nil {
@@ -132,7 +132,7 @@ func parseSingleValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (IValExpr, er
 	var firstExpr IValExpr
 	firstExpr = firstId
 	// try for function call
-	if nextTok.TokenType == tokenizer.ROpenParen {
+	if nextTok.TokenType == token.ROpenParen {
 		funcName := firstId
 		// point to the opening parenthesis
 		tokIter.Next()
@@ -145,7 +145,7 @@ func parseSingleValueExpr(tokIter *iterator.Iter[tokenizer.Token]) (IValExpr, er
 	return firstExpr, nil
 }
 
-func parseFuncDecl(tokIter *iterator.Iter[tokenizer.Token]) (*FunctionDeclExpression, error) {
+func parseFuncDecl(tokIter *iterator.Iter[token.Token]) (*FunctionDeclExpression, error) {
 	mbIdent, ok := tokIter.Next()
 	if !ok {
 		return nil, ggErrs.Runtime("Expected func name\n%s", tokIter.String())
@@ -157,7 +157,7 @@ func parseFuncDecl(tokIter *iterator.Iter[tokenizer.Token]) (*FunctionDeclExpres
 	}
 
 	mbOpenParen, ok := tokIter.Next()
-	if !ok || mbOpenParen.TokenType != tokenizer.ROpenParen {
+	if !ok || mbOpenParen.TokenType != token.ROpenParen {
 		return nil, ggErrs.Runtime("Expected (\n%s", tokIter.String())
 	}
 
@@ -167,13 +167,13 @@ func parseFuncDecl(tokIter *iterator.Iter[tokenizer.Token]) (*FunctionDeclExpres
 		if !ok {
 			return nil, ggErrs.Runtime("Unexpected end of param list\n%s", tokIter.String())
 		}
-		if parm.TokenType == tokenizer.RCloseParen {
+		if parm.TokenType == token.RCloseParen {
 			break
 		}
-		if parm.TokenType == tokenizer.RComma {
+		if parm.TokenType == token.RComma {
 			continue
 		}
-		if parm.TokenType != tokenizer.Ident {
+		if parm.TokenType != token.Ident {
 			return nil, ggErrs.Runtime("Unexpected token\n%s", tokIter.String())
 		}
 
@@ -181,27 +181,27 @@ func parseFuncDecl(tokIter *iterator.Iter[tokenizer.Token]) (*FunctionDeclExpres
 	}
 
 	mbOpenBrack, ok := tokIter.Next()
-	if !ok || mbOpenBrack.TokenType != tokenizer.ROpenBrace {
+	if !ok || mbOpenBrack.TokenType != token.ROpenBrace {
 		return nil, ggErrs.Runtime("Expected {\n%s", tokIter.String())
 	}
 
 	return &FunctionDeclExpression{
-		Target: *id,
+		Target: id,
 		Params: parms,
 		Value:  nil,
 	}, nil
 }
 
 // iter should be pointing to the opening parenthesis here
-func newFuncCallExpression(funcName *Identifier, iter *iterator.Iter[tokenizer.Token]) (IValExpr, error) {
+func newFuncCallExpression(funcName *Identifier, iter *iterator.Iter[token.Token]) (IValExpr, error) {
 	nextTok, ok := iter.Peek()
 	if !ok {
 		return nil, ggErrs.Runtime("expected closing parenthesis ')' or args after function name\n%s", iter.String())
 	}
-	if nextTok.TokenType == tokenizer.RCloseParen {
+	if nextTok.TokenType == token.RCloseParen {
 		iter.Next() // consume the closing parenthesis ')'
 		return &FunctionCallExpression{
-			Id:   *funcName,
+			Id:   funcName,
 			Args: nil,
 		}, nil
 	}
@@ -217,15 +217,15 @@ func newFuncCallExpression(funcName *Identifier, iter *iterator.Iter[tokenizer.T
 		}
 		args = append(args, val)
 		mbComma := iter.Current()
-		if mbComma.TokenType == tokenizer.RComma {
+		if mbComma.TokenType == token.RComma {
 			continue
 		}
-		if mbComma.TokenType == tokenizer.RCloseParen {
+		if mbComma.TokenType == token.RCloseParen {
 			break
 		}
 	}
 	return &FunctionCallExpression{
-		Id:   *funcName,
+		Id:   funcName,
 		Args: args,
 	}, nil
 }

@@ -1,17 +1,17 @@
-package godTree
+package gg_ast
 
 import (
 	"gg-lang/src/ggErrs"
 	"gg-lang/src/iterator"
 	"gg-lang/src/operators"
-	"gg-lang/src/tokenizer"
+	"gg-lang/src/token"
 )
 
 // iter should be pointing to right before the second expression after the first operator
 // returns an identifier if there's no operator or a bin expression ready to be walked
 // with operator precedence
 func parseBinaryExpression(
-	tokIter *iterator.Iter[tokenizer.Token],
+	tokIter *iterator.Iter[token.Token],
 ) (IValExpr, error) {
 	// begin building the initial binary expression if it exists
 	lhsSve, err := parseSingleValueExpr(tokIter)

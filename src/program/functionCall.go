@@ -3,11 +3,11 @@ package program
 import (
 	"gg-lang/src/builtin"
 	"gg-lang/src/ggErrs"
-	"gg-lang/src/godTree"
+	"gg-lang/src/gg_ast"
 	"gg-lang/src/variables"
 )
 
-func (p *Program) funcCall(f *godTree.FunctionCallExpression) error {
+func (p *Program) funcCall(f *gg_ast.FunctionCallExpression) error {
 	variable, ok := p.top.variables[f.Id.Raw]
 	if !ok {
 		return ggErrs.Runtime("undefined function %s", f.Id.Raw)
@@ -36,7 +36,7 @@ func (p *Program) funcCall(f *godTree.FunctionCallExpression) error {
 	}
 
 	// set up func expression
-	funcDeclExpr := variable.Value.Val.(*godTree.FunctionDeclExpression)
+	funcDeclExpr := variable.Value.Val.(*gg_ast.FunctionDeclExpression)
 	if len(funcDeclExpr.Params) != len(f.Args) {
 		return ggErrs.Runtime("param count mismatch on", f.Id.Raw)
 	}
@@ -62,7 +62,7 @@ func (p *Program) funcCall(f *godTree.FunctionCallExpression) error {
 		p.current.variables[v.Name] = &temp
 	}
 
-	err := p.Run(&godTree.Ast{Body: funcDeclExpr.Value})
+	err := p.Run(&gg_ast.Ast{Body: funcDeclExpr.Value})
 	if err != nil {
 		return err
 	}

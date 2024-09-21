@@ -1,125 +1,75 @@
-package tokenizer
+package token
 
 import (
-	"fmt"
 	"gg-lang/src/ggErrs"
 	"gg-lang/src/parser"
 	uni "unicode"
 )
 
-type TokenType int
-
-const (
-	beginOperators TokenType = iota
-	RPlus
-	RMinus
-	RMul
-	RDiv
-	RAssign
-	endOperators
-
-	beginContainers
-	ROpenParen
-	RCloseParen
-	ROpenBrace
-	RCloseBrace
-	RQuote
-	endContainers
-
-	beginSeparators
-	RTerm
-	RComma
-	endSeparators
-
-	beginIdentifiers
-	Ident
-	IntLiteral
-	StringLiteral
-	TrueLiteral
-	FalseLiteral
-	endIdentifiers
-
-	beginKeywords
-	Function
-	endKeywords
-)
-
-func (t TokenType) IsOperator() bool {
-	return t > beginOperators && t < endOperators
-}
-func (t TokenType) IsContainer() bool {
-	return t > beginContainers && t < endContainers
-}
-func (t TokenType) IsSeparator() bool {
-	return t > beginSeparators && t < endSeparators
-}
-func (t TokenType) IsIdentifier() bool {
-	return t > beginIdentifiers && t < endIdentifiers
-}
-func (t TokenType) IsMathOperator() bool {
-	return t == RPlus || t == RMinus || t == RMul || t == RDiv
-}
-
-func (t TokenType) String() string {
-	if s, ok := reservedTokens[t]; ok {
-		return s
+func tokenizeStmt(par *parser.Parser[rune]) ([]Token, error) {
+	tk := &tkzr{
+		Par: par,
 	}
-	return fmt.Sprintf("TokenType(%d)", t)
-}
-
-var reservedTokens = map[TokenType]string{
-	// operators
-	RPlus:   "+",
-	RMinus:  "-",
-	RMul:    "*",
-	RDiv:    "/",
-	RTerm:   ";",
-	RAssign: "=",
-
-	// containers
-	ROpenParen:  "(",
-	RCloseParen: ")",
-	ROpenBrace:  "{",
-	RCloseBrace: "}",
-	RQuote:      "\"",
-
-	// separators
-	RComma: ",",
-
-	// built-in literals
-	TrueLiteral:  "true",
-	FalseLiteral: "false",
-
-	// keyword
-	Function: "routine",
-}
-
-var reservedTokensMap = map[string]TokenType{}
-
-func init() {
-	for i, c := range reservedTokens {
-		reservedTokensMap[c] = i
+	var stmt []Token
+	a := func(tok Token) {
+		stmt = append(stmt, tok)
+	}
+	for {
+		switch {
+		case shouldIgnore(par.Curr):
+			tk.consume()
+		case isRuneReserved(tk.Par.Curr, RTerm): // begin reserved characters
+			tk.consume()
+			return stmt, nil
+		case isRuneReserved(tk.Par.Curr, RQuote):
+			strTok, err := parseStringLiteral(par)
+			if err != nil {
+				return nil, err
+			}
+			stmt = append(stmt, strTok)
+			//addToCurr(strTok)
+		case isReserved(string(par.Curr)) && lookup(string(par.Curr)).IsOperator():
+			tok, err := _parseOperator(par)
+			if err != nil {
+				return nil, err
+			}
+			a(tok)
+		case isRuneReserved(tk.Par.Curr, ROpenBrace): // begin containers
+			a(singleRuneTok(par, ROpenBrace))
+		case isRuneReserved(tk.Par.Curr, RCloseBrace):
+			a(singleRuneTok(par, RCloseBrace))
+			break
+		case isRuneReserved(tk.Par.Curr, RComma):
+			a(singleRuneTok(par, RComma))
+			tk.consume()
+		case isRuneReserved(tk.Par.Curr, ROpenParen):
+			a(singleRuneTok(par, ROpenParen))
+			tk.consume()
+		case isRuneReserved(tk.Par.Curr, RCloseParen):
+			a(singleRuneTok(par, RCloseParen))
+			tk.consume()
+		case uni.IsDigit(par.Curr):
+			numTok, err := parseNumLiteral(par)
+			if err != nil {
+				return nil, err
+			}
+			a(numTok)
+		case uni.IsLetter(par.Curr):
+			idTok, err := parseIdentifier(par)
+			if err != nil {
+				return nil, err
+			}
+			a(idTok)
+		}
 	}
 }
 
-func isReserved(in string) bool {
-	_, ok := reservedTokensMap[in]
-	return ok
+type tkzr struct {
+	Par *parser.Parser[rune]
 }
 
-func lookup(in string) TokenType {
-	return reservedTokensMap[in]
-}
-
-type Token struct {
-	Start     int
-	End       int
-	Str       string
-	TokenType TokenType
-}
-
-func (t Token) String() string {
-	return fmt.Sprintf("(%d-%d) %s", t.Start, t.End, t.Str)
+func (t *tkzr) consume() {
+	t.Par.Advance()
 }
 
 func TokenizeRunes(ins []rune) ([][]Token, error) {
@@ -131,66 +81,12 @@ func TokenizeRunes(ins []rune) ([][]Token, error) {
 
 	var stmts [][]Token
 
-	var currStmt []Token
-
-	endStmt := func() {
-		stmts = append(stmts, currStmt)
-		currStmt = nil
-	}
-
-	addToCurr := func(tok Token) {
-		currStmt = append(currStmt, tok)
-	}
-
-	isRTok := func(t TokenType) bool {
-		return isReserved(string(par.Curr)) && lookup(string(par.Curr)) == t
-	}
-
-	// par starts at -1
-	par.Advance()
 	for par.HasCurr {
-		switch {
-		case shouldIgnore(par.Curr):
-			par.Advance()
-		case isRTok(RTerm): // begin reserved characters
-			par.Advance()
-			endStmt()
-		case isRTok(RQuote):
-			strTok, err := parseStringLiteral(par)
-			if err != nil {
-				return nil, err
-			}
-			addToCurr(strTok)
-		case isReserved(string(par.Curr)) && lookup(string(par.Curr)).IsOperator():
-			tok, err := _parseOperator(par)
-			if err != nil {
-				return nil, err
-			}
-			addToCurr(tok)
-		case isRTok(ROpenBrace): // begin containers
-			fallthrough
-		case isRTok(RCloseBrace):
-			addToCurr(singleRuneTok(par, lookup(string(par.Curr))))
-			endStmt()
-		case isRTok(RComma):
-			fallthrough
-		case isRTok(ROpenParen):
-			fallthrough
-		case isRTok(RCloseParen):
-			addToCurr(singleRuneTok(par, lookup(string(par.Curr))))
-		case uni.IsDigit(par.Curr):
-			numTok, err := parseNumLiteral(par)
-			if err != nil {
-				return nil, err
-			}
-			addToCurr(numTok)
-		case uni.IsLetter(par.Curr):
-			idTok, err := parseIdentifier(par)
-			if err != nil {
-				return nil, err
-			}
-			addToCurr(idTok)
+		stmt, err := tokenizeStmt(par)
+		if err != nil {
+			return nil, err
 		}
+		stmts = append(stmts, stmt)
 	}
 
 	return stmts, nil

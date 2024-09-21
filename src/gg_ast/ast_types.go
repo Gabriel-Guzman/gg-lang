@@ -1,6 +1,6 @@
 //go:generate stringer -type=ExpressionKind
 
-package godTree
+package gg_ast
 
 type ExpressionKind int
 

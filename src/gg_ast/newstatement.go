@@ -1,9 +1,10 @@
-package godTree
+package gg_ast
 
 import (
 	"gg-lang/src/ggErrs"
+	"gg-lang/src/operators"
 	"gg-lang/src/parser"
-	"gg-lang/src/tokenizer"
+	"gg-lang/src/token"
 )
 
 /*
@@ -19,11 +20,10 @@ The parser should be at its initial state, i.e. with the current index set to 0 
 pointing to the first token in the expression.
 After a successful parse, the parser should be pointing to the token after the expression
 */
-func _parseStatement(p *parser.Parser[tokenizer.Token]) (Expression, error) {
+func parseTopLevelExpr(p *parser.Parser[token.Token]) (Expression, error) {
 	// first expression should be an identifier, a reserved keyword, or a value expression
-
 	// check reserved keywords first
-	if p.Curr.TokenType == tokenizer.Function {
+	if p.Curr.TokenType == token.Function {
 		funcDecl, err := _parseFuncDecl(p)
 		if err != nil {
 			return nil, err
@@ -33,13 +33,13 @@ func _parseStatement(p *parser.Parser[tokenizer.Token]) (Expression, error) {
 
 	// now it could be a function call or an assignment expression, both of which
 	// have to start with an identifier. this means no unassigned value expressions
-	// other than function calls are allowed.
+	// other than function calls are allowed at the top level.
 	id, err := _parseIdentifier(p)
 	if err != nil {
 		return nil, err
 	}
 
-	if p.Curr.TokenType == tokenizer.RAssign {
+	if p.Curr.TokenType == token.RAssign {
 		p.Advance()
 		return _parseAssignmentExpr(id, p)
 	}
@@ -56,7 +56,7 @@ This will almost always be the token right after the first identifier in the exp
 i.e. the "(" in "funCall();" or the "=" in "x = 1 + 2;"
 After a successful parse, the parser should be pointing to the token after the expression
 */
-func _parseAssignmentExpr(target *Identifier, p *parser.Parser[tokenizer.Token]) (*AssignmentExpression, error) {
+func _parseAssignmentExpr(target *Identifier, p *parser.Parser[token.Token]) (*AssignmentExpression, error) {
 	expr, err := _parseValueExpr(p)
 	if err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func _parseAssignmentExpr(target *Identifier, p *parser.Parser[tokenizer.Token])
 	return &AssignmentExpression{Target: target, Value: expr}, nil
 }
 
-func _parseFuncDecl(p *parser.Parser[tokenizer.Token]) (*FunctionDeclExpression, error) {
+func _parseFuncDecl(p *parser.Parser[token.Token]) (*FunctionDeclExpression, error) {
 	p.Advance() // eat the function keyword
 
 	id, err := _parseIdentifier(p)
@@ -73,7 +73,7 @@ func _parseFuncDecl(p *parser.Parser[tokenizer.Token]) (*FunctionDeclExpression,
 		return nil, err
 	}
 
-	if !advanceIfCurrIs(p, tokenizer.ROpenParen) {
+	if !advanceIfCurrIs(p, token.ROpenParen) {
 		return nil, ggErrs.Runtime("expected '(' after function name\n%s", p.String())
 	}
 
@@ -83,13 +83,13 @@ func _parseFuncDecl(p *parser.Parser[tokenizer.Token]) (*FunctionDeclExpression,
 			return nil, ggErrs.Runtime("Unexpected end of param list\n%s", p.String())
 		}
 		param := p.Curr
-		if param.TokenType == tokenizer.RCloseParen {
+		if param.TokenType == token.RCloseParen {
 			break
 		}
-		if param.TokenType == tokenizer.RComma {
+		if param.TokenType == token.RComma {
 			continue
 		}
-		if param.TokenType != tokenizer.Ident {
+		if param.TokenType != token.Ident {
 			return nil, ggErrs.Runtime("Unexpected token\n%s", p.String())
 		}
 
@@ -97,7 +97,7 @@ func _parseFuncDecl(p *parser.Parser[tokenizer.Token]) (*FunctionDeclExpression,
 		p.Advance()
 	}
 
-	if !advanceIfCurrIs(p, tokenizer.ROpenBrace) {
+	if !advanceIfCurrIs(p, token.ROpenBrace) {
 		return nil, ggErrs.Runtime("expected '{' after function declaration\n%s", p.String())
 	}
 
@@ -107,19 +107,19 @@ func _parseFuncDecl(p *parser.Parser[tokenizer.Token]) (*FunctionDeclExpression,
 	}, nil
 }
 
-func _parseIdentifier(p *parser.Parser[tokenizer.Token]) (*Identifier, error) {
+func _parseIdentifier(p *parser.Parser[token.Token]) (*Identifier, error) {
 	t := p.Curr
 	var ik IdExprKind
 	switch t.TokenType {
-	case tokenizer.IntLiteral:
+	case token.IntLiteral:
 		ik = IdExprNumber
-	case tokenizer.Ident:
+	case token.Ident:
 		ik = IdExprVariable
-	case tokenizer.StringLiteral:
+	case token.StringLiteral:
 		ik = IdExprString
-	case tokenizer.TrueLiteral:
+	case token.TrueLiteral:
 		ik = IdExprBool
-	case tokenizer.FalseLiteral:
+	case token.FalseLiteral:
 		ik = IdExprBool
 	default:
 		return nil, ggErrs.Runtime("invalid identifier %s", t.Str)
@@ -128,33 +128,103 @@ func _parseIdentifier(p *parser.Parser[tokenizer.Token]) (*Identifier, error) {
 	return &Identifier{Raw: t.Str, idKind: ik}, nil
 }
 
-func _parseValueExpr(p *parser.Parser[tokenizer.Token]) (IValExpr, error) {
+// returns a simple value expression or a binary expression
+func _parseValueExpr(p *parser.Parser[token.Token]) (IValExpr, error) {
+	if !p.HasCurr {
+		return nil, ggErrs.Runtime("unexpected end of expression\n%s", p.String())
+	}
+
+	// build initial binary tree
+	lhsNonBinary, err := _parseSingleValueExpr(p)
+	if err != nil {
+		return nil, err
+	}
+
+	if !p.Curr.TokenType.IsOperator() {
+		return lhsNonBinary, nil
+	}
+
+	op := p.Curr
+
+	rhs, err := _parseSingleValueExpr(p)
+	if err != nil {
+		return nil, err
+	}
+
+	lhs := &BinaryExpression{
+		Lhs: lhsNonBinary,
+		Op:  op.Str,
+		Rhs: rhs,
+	}
+
+	// add on to the initial tree
+	for {
+		op = p.Curr
+		if !op.TokenType.IsMathOperator() {
+			break
+		}
+
+		rhs, err := _parseSingleValueExpr(p)
+		if err != nil {
+			return nil, err
+		}
+
+		if operators.LeftFirst(lhs.Op, op.Str) {
+			// left needs to be evaluated first and therefor deeper into the tree
+			lhs = &BinaryExpression{
+				Lhs: lhs,
+				Op:  op.Str,
+				Rhs: rhs,
+			}
+		} else {
+			lhs.Rhs = &BinaryExpression{
+				Lhs: lhs.Rhs,
+				Op:  op.Str,
+				Rhs: rhs,
+			}
+		}
+	}
+	return lhs, nil
+}
+
+// A single value expression is either an identifier, a literal, or a function call
+func _parseSingleValueExpr(p *parser.Parser[token.Token]) (IValExpr, error) {
 	if !p.HasCurr {
 		return nil, ggErrs.Runtime("unexpected end of expression\n%s", p.String())
 	}
 
 	// unary operators
-	if p.Curr.TokenType == tokenizer.RMinus {
-		//lhs := newBinaryExpression()
+	if p.Curr.TokenType == token.RMinus {
+		p.Advance()
+		id, err := _parseIdentifier(p)
+		if err != nil {
+			return nil, err
+		}
+
+		return &BinaryExpression{
+			Lhs: &Identifier{
+				Raw:    "-1",
+				idKind: IdExprNumber,
+			},
+			Op:  "*",
+			Rhs: id,
+		}, nil
+	} else {
+		id, err := _parseIdentifier(p)
+		if err != nil {
+			return nil, err
+		}
+
+		if p.Curr.TokenType == token.ROpenParen {
+			return _parseFuncCallExpr(id, p)
+		} else {
+			return id, nil
+		}
 	}
-
-	switch {
-	case p.Curr.TokenType.IsOperator():
-		return _parseBinaryExpr(p)
-	}
 }
 
-func _parseBinaryExpr(p *parser.Parser[tokenizer.Token]) (IValExpr, error) {
-
-}
-
-func _parseSingleValueExpr(id *Identifier, p *parser.Parser[tokenizer.Token]) (IValExpr, error) {
-
-	return nil, ggErrs.Crit("not implemented")
-}
-
-func _parseFuncCallExpr(id *Identifier, p *parser.Parser[tokenizer.Token]) (IValExpr, error) {
-	if !advanceIfCurrIs(p, tokenizer.ROpenParen) {
+func _parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (IValExpr, error) {
+	if !advanceIfCurrIs(p, token.ROpenParen) {
 		return nil, ggErrs.Runtime("expected '(' after function name\n%s", p.String())
 	}
 
@@ -164,10 +234,10 @@ func _parseFuncCallExpr(id *Identifier, p *parser.Parser[tokenizer.Token]) (IVal
 			return nil, ggErrs.Runtime("Unexpected end of arg list\n%s", p.String())
 		}
 		arg := p.Curr
-		if arg.TokenType == tokenizer.RCloseParen {
+		if arg.TokenType == token.RCloseParen {
 			break
 		}
-		if arg.TokenType == tokenizer.RComma {
+		if arg.TokenType == token.RComma {
 			continue
 		}
 		expr, err := _parseValueExpr(p)
@@ -186,7 +256,7 @@ func _parseFuncCallExpr(id *Identifier, p *parser.Parser[tokenizer.Token]) (IVal
 }
 
 // Advances the parser if the current token matches the given token type
-func advanceIfCurrIs(p *parser.Parser[tokenizer.Token], tt tokenizer.TokenType) bool {
+func advanceIfCurrIs(p *parser.Parser[token.Token], tt token.TokenType) bool {
 	if p.HasCurr && p.Curr.TokenType == tt {
 
 		p.Advance()

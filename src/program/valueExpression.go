@@ -2,22 +2,22 @@ package program
 
 import (
 	"gg-lang/src/ggErrs"
-	"gg-lang/src/godTree"
+	"gg-lang/src/gg_ast"
 	"gg-lang/src/variables"
 	"strconv"
 )
 
-func (p *Program) evaluateValueExpr(expr godTree.IValExpr) (*variables.RuntimeValue, error) {
+func (p *Program) evaluateValueExpr(expr gg_ast.IValExpr) (*variables.RuntimeValue, error) {
 	switch expr.Kind() {
-	case godTree.ExprVariable:
-		name := expr.(*godTree.Identifier).Name()
+	case gg_ast.ExprVariable:
+		name := expr.(*gg_ast.Identifier).Name()
 		v := p.findVariable(name)
 		if v != nil {
 			return v.Value, nil
 		}
 		return nil, ggErrs.Runtime("undefined variable: %s", name)
-	case godTree.ExprIntLiteral:
-		name := expr.(*godTree.Identifier).Name()
+	case gg_ast.ExprIntLiteral:
+		name := expr.(*gg_ast.Identifier).Name()
 		intVal, err := strconv.Atoi(name)
 		if err != nil {
 			return nil, ggErrs.Crit("unable to evaluate number literal: %s", err.Error())
@@ -26,13 +26,13 @@ func (p *Program) evaluateValueExpr(expr godTree.IValExpr) (*variables.RuntimeVa
 			Val: intVal,
 			Typ: variables.Integer,
 		}, nil
-	case godTree.ExprStringLiteral:
+	case gg_ast.ExprStringLiteral:
 		return &variables.RuntimeValue{
-			Val: expr.(*godTree.Identifier).Name(),
+			Val: expr.(*gg_ast.Identifier).Name(),
 			Typ: variables.String,
 		}, nil
-	case godTree.ExprBinary:
-		binExp := expr.(*godTree.BinaryExpression)
+	case gg_ast.ExprBinary:
+		binExp := expr.(*gg_ast.BinaryExpression)
 
 		left, err := p.evaluateValueExpr(binExp.Lhs)
 		if err != nil {
@@ -56,8 +56,8 @@ func (p *Program) evaluateValueExpr(expr godTree.IValExpr) (*variables.RuntimeVa
 			Val: value,
 			Typ: resultType,
 		}, nil
-	case godTree.ExprFunctionCall:
-		f := expr.(*godTree.FunctionCallExpression)
+	case gg_ast.ExprFunctionCall:
+		f := expr.(*gg_ast.FunctionCallExpression)
 		if err := p.funcCall(f); err != nil {
 			return &variables.RuntimeValue{
 				Val: nil,
