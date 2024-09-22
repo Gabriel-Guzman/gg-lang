@@ -87,25 +87,12 @@ func BuildFromStatements(ins [][]token.Token) (*Ast, error) {
 		}
 		a.StmtPar.Advance() // consume the statement
 
-		// if the last statement was a function declaration, parse its block statement
-		if stmt.Kind() == ExprFuncDecl {
+		if b, ok := stmt.(BlockExpression); ok {
 			exprs, err := a.parseBlockStatement()
 			if err != nil {
 				return nil, err
 			}
-
-			decl := stmt.(*FunctionDeclExpression)
-			decl.Value = exprs
-		}
-
-		if stmt.Kind() == ExprForLoop {
-			exprs, err := a.parseBlockStatement()
-			if err != nil {
-				return nil, err
-			}
-
-			loop := stmt.(*ForLoopExpression)
-			loop.Body = exprs
+			b.SetStatements(exprs)
 		}
 
 		expressions = append(expressions, stmt)

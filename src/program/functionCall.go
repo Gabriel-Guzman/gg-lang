@@ -7,16 +7,16 @@ import (
 	"gg-lang/src/variables"
 )
 
-func (p *Program) call(f *gg_ast.FunctionCallExpression) error {
+func (p *Program) call(f *gg_ast.FunctionCallExpression) (*variables.RuntimeValue, error) {
 	variable, ok := p.top.variables[f.Id.Raw]
 	if !ok {
-		return ggErrs.Runtime("undefined function %s", f.Id.Raw)
+		return nil, ggErrs.Runtime("undefined function %s, evaluating\n%s", f.Id.Raw, gg_ast.NoBuilderExprString(f))
 	}
 
 	// check if callable
 	if variable.RuntimeValue.Typ != variables.Function &&
 		variable.RuntimeValue.Typ != variables.BuiltinFunction {
-		return ggErrs.Runtime("%s is not callable", f.Id.Raw)
+		return nil, ggErrs.Runtime("%s is not callable, evaluating\n%s", f.Id.Raw, gg_ast.NoBuilderExprString(f))
 	}
 
 	// build values for arguments
@@ -24,7 +24,7 @@ func (p *Program) call(f *gg_ast.FunctionCallExpression) error {
 	for i, arg := range f.Args {
 		value, err := p.evaluateValueExpr(arg)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		vals[i] = value
@@ -38,7 +38,7 @@ func (p *Program) call(f *gg_ast.FunctionCallExpression) error {
 	// set up func expression
 	funcDeclExpr := variable.RuntimeValue.Val.(*gg_ast.FunctionDeclExpression)
 	if len(funcDeclExpr.Params) != len(f.Args) {
-		return ggErrs.Runtime("param count mismatch on", f.Id.Raw)
+		return nil, ggErrs.Runtime("param count mismatch on %s, evaluating\n%s", f.Id.Raw, gg_ast.NoBuilderExprString(f))
 	}
 
 	// build variables for new scope
@@ -61,22 +61,25 @@ func (p *Program) call(f *gg_ast.FunctionCallExpression) error {
 		p.current.variables[v.Name] = &temp
 	}
 
-	err := p.Run(&gg_ast.Ast{Body: funcDeclExpr.Value})
+	err := p.Run(&gg_ast.Ast{Body: funcDeclExpr.Body})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return &variables.RuntimeValue{
+		Val: nil,
+		Typ: variables.Void,
+	}, nil
 }
 
-func (p *Program) builtinFuncCall(f builtin.Func, args []*variables.RuntimeValue) error {
+func (p *Program) builtinFuncCall(f builtin.Func, args []*variables.RuntimeValue) (*variables.RuntimeValue, error) {
 	//var vals []*variables.RuntimeValue
 	//for _, arg := range args {
 	//	vals = append(vals, arg.Val)
 	//}
-	err := f.Call(args...)
+	res, err := f.Call(args...)
 	if err != nil {
-		return ggErrs.Runtime("builtin function %s: %v", f.Name(), err)
+		return nil, err
 	}
 
-	return nil
+	return res, nil
 }

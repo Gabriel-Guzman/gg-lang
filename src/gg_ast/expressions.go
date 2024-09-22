@@ -57,10 +57,13 @@ func (ae *AssignmentExpression) Kind() ExpressionKind { return ExprAssignment }
 type FunctionDeclExpression struct {
 	Target *Identifier
 	Params []string
-	Value  []Expression
+	Body   []Expression
 }
 
 func (fde *FunctionDeclExpression) Kind() ExpressionKind { return ExprFuncDecl }
+func (fde *FunctionDeclExpression) SetStatements(s []Expression) {
+	fde.Body = s
+}
 
 // for i != 10 {
 type ForLoopExpression struct {
@@ -69,6 +72,9 @@ type ForLoopExpression struct {
 }
 
 func (fle *ForLoopExpression) Kind() ExpressionKind { return ExprForLoop }
+func (fle *ForLoopExpression) SetStatements(s []Expression) {
+	fle.Body = s
+}
 
 func ind(count int) string {
 	var spaces []rune
@@ -77,6 +83,12 @@ func ind(count int) string {
 	}
 
 	return string(spaces)
+}
+
+func NoBuilderExprString(e Expression) string {
+	sb := &strings.Builder{}
+	ExprString(e, 0, sb)
+	return sb.String()
 }
 
 func ExprString(e Expression, d int, sb *strings.Builder) {
@@ -118,7 +130,7 @@ func ExprString(e Expression, d int, sb *strings.Builder) {
 		val := e.(*FunctionDeclExpression)
 		w("decl of " + val.Target.Name() + fmt.Sprintf("(%s)\n", strings.Join(val.Params, ", ")))
 		w(" to do")
-		for _, expr := range val.Value {
+		for _, expr := range val.Body {
 			ExprString(expr, d+1, sb)
 		}
 	default:

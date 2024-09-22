@@ -33,3 +33,11 @@ type ValueExpression interface {
 
 	Name() string
 }
+
+// a BlockExpression is an Expression followed by a block statement
+// such as token.For, token.Function
+type BlockExpression interface {
+	Expression
+
+	SetStatements(statements []Expression)
+}

@@ -56,7 +56,8 @@ func (p *Program) evaluateValueExpr(expr gg_ast.ValueExpression) (*variables.Run
 
 		op, exists := p.opMap.Get(binExp.Op, left.Typ, right.Typ)
 		if !exists {
-			return nil, ggErrs.Runtime("evaluateValueExpr: op %s not supported between types %T and %T", binExp.Op, left.Typ, right.Typ)
+			return nil, ggErrs.Runtime(
+				"evaluateValueExpr: op %s not supported between types %s and %s\nevaluating: %s", binExp.Op, left.Typ.String(), right.Typ.String(), gg_ast.NoBuilderExprString(expr))
 		}
 
 		value := op.Evaluate(left.Val, right.Val)
@@ -68,14 +69,7 @@ func (p *Program) evaluateValueExpr(expr gg_ast.ValueExpression) (*variables.Run
 		}, nil
 	case gg_ast.ExprFunctionCall:
 		f := expr.(*gg_ast.FunctionCallExpression)
-		if err := p.call(f); err != nil {
-			return &variables.RuntimeValue{
-				Val: nil,
-				Typ: variables.Void,
-			}, nil
-		} else {
-			return nil, err
-		}
+		return p.call(f)
 	default:
 		return nil, ggErrs.Crit("evaluateValueExpr: invalid expression type: %v", expr)
 	}

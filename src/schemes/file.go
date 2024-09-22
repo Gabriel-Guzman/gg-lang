@@ -8,10 +8,16 @@ import (
 	"gg-lang/src/program"
 	"gg-lang/src/token"
 	"os"
+	"time"
 )
+
+func makeTimestamp() int64 {
+	return time.Now().UnixNano() / 1e6
+}
 
 // execute a GG program from a file and output the AST to a file
 func Exec(filename string) {
+	t := makeTimestamp()
 	fmt.Println("Reading file:", filename)
 	out, err := os.ReadFile(filename)
 
@@ -44,4 +50,6 @@ func Exec(filename string) {
 	sess := program.New()
 	err = sess.Run(ast)
 	ggErrs.Handle(err)
+
+	fmt.Println(makeTimestamp()-t, "ms")
 }

@@ -52,8 +52,10 @@ func Default() *OpMap {
 	opm.Set(">=", variables.Integer, variables.Integer, &greaterThanEqualInts{})
 
 	opm.Set("+", variables.String, variables.String, &plusStrings{})
-	opm.Set("+", variables.Integer, variables.String, &intPlusString{})
-	opm.Set("+", variables.String, variables.Integer, &stringPlusInt{})
+	opm.Set("+", variables.Integer, variables.String, &coercedPlusString{})
+	opm.Set("+", variables.String, variables.Integer, &stringPlusCoerced{})
+	opm.Set("+", variables.Boolean, variables.String, &coercedPlusString{})
+	opm.Set("+", variables.String, variables.Boolean, &stringPlusCoerced{})
 
 	opm.Set("==", variables.Boolean, variables.Boolean, &equalsBools{})
 	opm.Set("!=", variables.Boolean, variables.Boolean, &notEqualsBools{})

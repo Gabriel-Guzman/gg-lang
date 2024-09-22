@@ -35,3 +35,30 @@ func (*stringPlusInt) Evaluate(left, right interface{}) interface{} {
 func (*stringPlusInt) ResultType() variables.VarType {
 	return variables.String
 }
+
+type coercedPlusString struct{}
+
+func (*coercedPlusString) Evaluate(left, right interface{}) interface{} {
+	lhs, err := variables.CoerceTo(left, variables.String)
+	if err != nil {
+		return nil
+	}
+	return lhs.(string) + right.(string)
+}
+
+func (*coercedPlusString) ResultType() variables.VarType {
+	return variables.String
+}
+
+type stringPlusCoerced struct{}
+
+func (*stringPlusCoerced) Evaluate(left, right interface{}) interface{} {
+	rhs, err := variables.CoerceTo(right, variables.String)
+	if err != nil {
+		return nil
+	}
+	return left.(string) + rhs.(string)
+}
+func (*stringPlusCoerced) ResultType() variables.VarType {
+	return variables.String
+}

@@ -159,7 +159,7 @@ func (p *Program) RunExpression(expr gg_ast.Expression) error {
 
 	case gg_ast.ExprFunctionCall:
 		call := expr.(*gg_ast.FunctionCallExpression)
-		err := p.call(call)
+		_, err := p.call(call)
 		if err != nil {
 			return err
 		}
