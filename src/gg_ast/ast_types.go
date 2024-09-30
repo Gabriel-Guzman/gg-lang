@@ -24,6 +24,7 @@ const (
 	ExprForLoop
 	ExprIfElse
 	ExprBlock
+	ExprReturn
 )
 
 type Expression interface {

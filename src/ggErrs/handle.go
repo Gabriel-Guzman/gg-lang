@@ -13,7 +13,7 @@ func Handle(err error) {
 	var critErr *CritErr
 	switch {
 	case errors.As(err, &chillErr):
-		fmt.Printf("Runtime error: %s\n", chillErr.Error())
+		panic(fmt.Sprintf("Runtime error: %s\n", chillErr.Error()))
 	case errors.As(err, &critErr):
 		panic(fmt.Sprintf("Crit error: %s\n", critErr.Error()))
 	default:

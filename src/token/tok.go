@@ -50,6 +50,7 @@ const (
 	For
 	If
 	Else
+	Return
 	endKeywords
 )
 
@@ -117,6 +118,7 @@ var reservedTokens = map[Type]string{
 	For:      "for",
 	If:       "if",
 	Else:     "else",
+	Return:   "return",
 }
 
 var reservedTokensMap = map[string]Type{}

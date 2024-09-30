@@ -95,6 +95,12 @@ func (fle *ForLoopExpression) SetStatements(s []Expression) {
 	fle.Body = s
 }
 
+type ReturnStatement struct {
+	Value ValueExpression
+}
+
+func (rs *ReturnStatement) Kind() ExpressionKind { return ExprReturn }
+
 func ind(count int) string {
 	var spaces []rune
 	for i := 0; i < count*4; i++ {

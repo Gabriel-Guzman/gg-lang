@@ -61,10 +61,16 @@ func (p *Program) call(f *gg_ast.FunctionCallExpression) (*variables.RuntimeValu
 		p.current.variables[v.Name] = &temp
 	}
 
-	err := p.Run(&gg_ast.Ast{Body: funcDeclExpr.Body})
-	if err != nil {
-		return nil, err
+	for _, stmt := range funcDeclExpr.Body {
+		if stmt.Kind() == gg_ast.ExprReturn {
+			return p.evaluateValueExpr(stmt.(*gg_ast.ReturnStatement).Value)
+		}
+		err := p.RunStmt(stmt)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	return &variables.RuntimeValue{
 		Val: nil,
 		Typ: variables.Void,
