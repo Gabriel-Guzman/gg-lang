@@ -10,11 +10,9 @@ import (
 /*
 This is the top-level expression parser.
 Its job is to
- 1. pick the appropriate expression parser (all defined below) based on
-
-the first two tokens in the parser argument.
+ 1. pick the appropriate expression parser (all defined below) based on the
+		first two tokens in the parser argument.
  2. parse the expression
- 3. handle block statements (if any)
 
 The parser should be at its initial state, i.e. with the current index set to 0 and
 pointing to the first token in the expression.
@@ -48,14 +46,7 @@ func parseStatement(p *parser.Parser[token.Token]) (Expression, error) {
 
 	if p.Curr.TokenType == token.Assign {
 		p.Advance()
-		expr, err := parseAssignmentExpr(id, p)
-		if err != nil {
-			return nil, err
-		}
-		if !advanceIfCurrIs(p, token.Term) {
-			return nil, ggErrs.Syntax("expected ; after assignment expression\n%s", p.String())
-		}
-		return expr, nil
+		return parseAssignmentExpr(id, p)
 	}
 
 	// if no operator, it's a function call
@@ -63,11 +54,10 @@ func parseStatement(p *parser.Parser[token.Token]) (Expression, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	if !advanceIfCurrIs(p, token.Term) {
 		return nil, ggErrs.Syntax("expected ; after function call\n%s", p.String())
 	}
-	return expr, err
+	return expr, nil
 }
 
 /*
@@ -82,6 +72,9 @@ func parseAssignmentExpr(target *Identifier, p *parser.Parser[token.Token]) (*As
 	expr, err := parseValueExpr(p)
 	if err != nil {
 		return nil, err
+	}
+	if !advanceIfCurrIs(p, token.Term) {
+		return nil, ggErrs.Syntax("expected ; after assignment expression\n%s", p.String())
 	}
 
 	return &AssignmentExpression{Target: target, Value: expr}, nil
@@ -343,16 +336,12 @@ func parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (ValueExpr
 		}
 		args = append(args, expr)
 
-		arg := p.Curr
-		if arg.TokenType == token.CloseParen {
-			p.Advance() // consume the ')'
+		if advanceIfCurrIs(p, token.CloseParen) { // consume the ')'
 			break
 		}
-
 		if !advanceIfCurrIs(p, token.Comma) {
 			return nil, ggErrs.Runtime("expected ',' or ')' after argument\n%s", p.String())
 		}
-
 	}
 
 	return &FunctionCallExpression{
@@ -364,7 +353,6 @@ func parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (ValueExpr
 // Advances the parser if the current token matches the given token type
 func advanceIfCurrIs(p *parser.Parser[token.Token], tt token.Type) bool {
 	if p.HasCurr && p.Curr.TokenType == tt {
-
 		p.Advance()
 		return true
 	}

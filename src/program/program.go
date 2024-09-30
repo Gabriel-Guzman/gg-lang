@@ -133,17 +133,14 @@ func (p *Program) RunStmt(expr gg_ast.Expression) error {
 	switch expr.Kind() {
 	case gg_ast.ExprBlock:
 		block := expr.(gg_ast.BlockStatement)
-
 		err := p.runBlockStmtNewScope(block)
 		if err != nil {
 			return err
 		}
-
 	case gg_ast.ExprAssignment:
 		if err := p.evaluateAssignment(expr.(*gg_ast.AssignmentExpression)); err != nil {
 			return err
 		}
-
 	case gg_ast.ExprFuncDecl:
 		decl := expr.(*gg_ast.FunctionDeclExpression)
 		_, err := p.declareVarTop(decl.Target.Raw, &variables.RuntimeValue{
@@ -153,11 +150,8 @@ func (p *Program) RunStmt(expr gg_ast.Expression) error {
 		if err != nil {
 			return err
 		}
-
 	case gg_ast.ExprForLoop:
 		loop := expr.(*gg_ast.ForLoopExpression)
-		p.enterNewScope()
-		defer p.exitScope()
 		for {
 			val, err := p.evaluateValueExpr(loop.Condition)
 			if err != nil {
@@ -197,7 +191,6 @@ func (p *Program) RunStmt(expr gg_ast.Expression) error {
 				}
 			}
 		}
-
 	case gg_ast.ExprFunctionCall:
 		call := expr.(*gg_ast.FunctionCallExpression)
 		_, err := p.call(call)
