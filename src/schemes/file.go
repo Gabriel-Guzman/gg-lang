@@ -35,7 +35,7 @@ func Exec(filename string) {
 	err = os.WriteFile("out/stmts.json", stmtsJson, 0644)
 	ggErrs.Handle(err)
 
-	ast, err := gg_ast.BuildFromStatements(stmts)
+	ast, err := gg_ast.BuildFromTokens(stmts)
 	ggErrs.Handle(err)
 
 	tree, err := json.MarshalIndent(ast, "", "    ")

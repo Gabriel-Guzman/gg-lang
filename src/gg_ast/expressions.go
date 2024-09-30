@@ -16,6 +16,7 @@ const (
 	IdExprVariable = IdExprKind(ExprVariable)
 )
 
+// a
 type Identifier struct {
 	Raw    string
 	idKind IdExprKind
@@ -25,6 +26,12 @@ func (id *Identifier) Name() string {
 	return id.Raw
 }
 func (id *Identifier) Kind() ExpressionKind { return ExpressionKind(id.idKind) }
+
+// { print(a) }
+type BlockStatement []Expression
+
+func (bs BlockStatement) SetStatements(s []Expression) { copy(bs, s) }
+func (bs BlockStatement) Kind() ExpressionKind         { return ExprBlock }
 
 // a + b
 type BinaryExpression struct {
@@ -57,7 +64,7 @@ func (ae *AssignmentExpression) Kind() ExpressionKind { return ExprAssignment }
 type FunctionDeclExpression struct {
 	Target *Identifier
 	Params []string
-	Body   []Expression
+	Body   BlockStatement
 }
 
 func (fde *FunctionDeclExpression) Kind() ExpressionKind { return ExprFuncDecl }
@@ -65,21 +72,22 @@ func (fde *FunctionDeclExpression) SetStatements(s []Expression) {
 	fde.Body = s
 }
 
-type IfElseExpression struct {
+// if a == b { } else if a == c { } else { }
+type IfElseStatement struct {
 	Condition      ValueExpression
-	Body           []Expression
-	ElseExpression []Expression // optional
+	Body           BlockStatement
+	ElseExpression Expression // optional
 }
 
-func (ife *IfElseExpression) Kind() ExpressionKind { return ExprIfElse }
-func (ife *IfElseExpression) SetStatements(s []Expression) {
+func (ife *IfElseStatement) Kind() ExpressionKind { return ExprIfElse }
+func (ife *IfElseStatement) SetStatements(s []Expression) {
 	ife.Body = s
 }
 
 // for i != 10 {
 type ForLoopExpression struct {
 	Condition ValueExpression
-	Body      []Expression
+	Body      BlockStatement
 }
 
 func (fle *ForLoopExpression) Kind() ExpressionKind { return ExprForLoop }

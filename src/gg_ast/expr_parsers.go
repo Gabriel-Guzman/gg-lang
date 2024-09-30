@@ -45,11 +45,26 @@ func parseStatement(p *parser.Parser[token.Token]) (Expression, error) {
 
 	if p.Curr.TokenType == token.Assign {
 		p.Advance()
-		return parseAssignmentExpr(id, p)
+		expr, err := parseAssignmentExpr(id, p)
+		if err != nil {
+			return nil, err
+		}
+		if !advanceIfCurrIs(p, token.Term) {
+			return nil, ggErrs.Syntax("expected ; after assignment expression\n%s", p.String())
+		}
+		return expr, nil
 	}
 
 	// if no operator, it's a function call
-	return parseFuncCallExpr(id, p)
+	expr, err := parseFuncCallExpr(id, p)
+	if err != nil {
+		return nil, err
+	}
+
+	if !advanceIfCurrIs(p, token.Term) {
+		return nil, ggErrs.Syntax("expected ; after function call\n%s", p.String())
+	}
+	return expr, err
 }
 
 /*
@@ -79,28 +94,47 @@ func parseForLoopExpr(p *parser.Parser[token.Token]) (*ForLoopExpression, error)
 		return nil, err
 	}
 
-	if !advanceIfCurrIs(p, token.OpenBrace) {
-		return nil, ggErrs.Syntax("expected '{' after for loop condition\n%s", p.String())
+	body, err := parseBlockStatement(p)
+	if err != nil {
+		return nil, err
 	}
-
-	return &ForLoopExpression{Condition: condition}, nil
+	return &ForLoopExpression{Condition: condition, Body: body}, nil
 }
 
-func parseIfElseExpr(p *parser.Parser[token.Token]) (*IfElseExpression, error) {
+func parseIfElseExpr(p *parser.Parser[token.Token]) (*IfElseStatement, error) {
 	if !advanceIfCurrIs(p, token.If) { // eat the if keyword
 		return nil, ggErrs.Crit("expected 'if' keyword in expression parser\n%s", p.String())
 	}
-
+	res := &IfElseStatement{}
 	condition, err := parseValueExpr(p)
 	if err != nil {
 		return nil, err
 	}
+	res.Condition = condition
 
-	if !advanceIfCurrIs(p, token.OpenBrace) {
-		return nil, ggErrs.Syntax("expected '{' after if condition\n%s", p.String())
+	body, err := parseBlockStatement(p)
+	if err != nil {
+		return nil, err
+	}
+	res.Body = body
+
+	if advanceIfCurrIs(p, token.Else) {
+		if p.Curr.TokenType == token.If {
+			alt, err := parseIfElseExpr(p)
+			if err != nil {
+				return nil, err
+			}
+			res.ElseExpression = alt
+		} else {
+			b, err := parseBlockStatement(p)
+			if err != nil {
+				return nil, err
+			}
+			res.ElseExpression = b
+		}
 	}
 
-	return &IfElseExpression{Condition: condition}, nil
+	return res, nil
 }
 
 func parseFuncDecl(p *parser.Parser[token.Token]) (*FunctionDeclExpression, error) {
@@ -137,13 +171,15 @@ func parseFuncDecl(p *parser.Parser[token.Token]) (*FunctionDeclExpression, erro
 		p.Advance()
 	}
 
-	if !advanceIfCurrIs(p, token.OpenBrace) {
-		return nil, ggErrs.Runtime("expected '{' after function declaration\n%s", p.String())
+	block, err := parseBlockStatement(p)
+	if err != nil {
+		return nil, err
 	}
 
 	return &FunctionDeclExpression{
 		Target: id,
 		Params: params,
+		Body:   block,
 	}, nil
 }
 

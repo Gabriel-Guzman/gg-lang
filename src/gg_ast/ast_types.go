@@ -23,6 +23,7 @@ const (
 	ExprFuncDecl
 	ExprForLoop
 	ExprIfElse
+	ExprBlock
 )
 
 type Expression interface {

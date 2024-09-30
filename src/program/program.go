@@ -107,7 +107,7 @@ func (p *Program) RunString(code string) error {
 
 func (p *Program) Run(ast *gg_ast.Ast) error {
 	for _, expr := range ast.Body {
-		err := p.RunExpression(expr)
+		err := p.RunStmt(expr)
 		if err != nil {
 			return err
 		}
@@ -116,8 +116,29 @@ func (p *Program) Run(ast *gg_ast.Ast) error {
 	return nil
 }
 
-func (p *Program) RunExpression(expr gg_ast.Expression) error {
+func (p *Program) runBlockStmtNewScope(block gg_ast.BlockStatement) error {
+	p.enterNewScope()
+	defer p.exitScope()
+
+	for _, stmt := range block {
+		err := p.RunStmt(stmt)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p *Program) RunStmt(expr gg_ast.Expression) error {
 	switch expr.Kind() {
+	case gg_ast.ExprBlock:
+		block := expr.(gg_ast.BlockStatement)
+
+		err := p.runBlockStmtNewScope(block)
+		if err != nil {
+			return err
+		}
+
 	case gg_ast.ExprAssignment:
 		if err := p.evaluateAssignment(expr.(*gg_ast.AssignmentExpression)); err != nil {
 			return err
@@ -149,8 +170,28 @@ func (p *Program) RunExpression(expr gg_ast.Expression) error {
 			if !val.Val.(bool) {
 				break
 			}
-			for _, loopExpr := range loop.Body {
-				err := p.RunExpression(loopExpr)
+			err = p.runBlockStmtNewScope(loop.Body)
+			if err != nil {
+				return err
+			}
+		}
+	case gg_ast.ExprIfElse:
+		ifElse := expr.(*gg_ast.IfElseStatement)
+		cond, err := p.evaluateValueExpr(ifElse.Condition)
+		if err != nil {
+			return err
+		}
+		if cond.Typ != variables.Boolean {
+			return ggErrs.Runtime("if condition must evaluate to bool\n%+v", expr)
+		}
+		if cond.Val.(bool) {
+			err = p.runBlockStmtNewScope(ifElse.Body)
+			if err != nil {
+				return err
+			}
+		} else {
+			if ifElse.ElseExpression != nil {
+				err = p.RunStmt(ifElse.ElseExpression)
 				if err != nil {
 					return err
 				}

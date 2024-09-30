@@ -50,6 +50,8 @@ func Default() *OpMap {
 	opm.Set(">", variables.Integer, variables.Integer, &greaterThanInts{})
 	opm.Set("<=", variables.Integer, variables.Integer, &lessThanEqualInts{})
 	opm.Set(">=", variables.Integer, variables.Integer, &greaterThanEqualInts{})
+	opm.Set("!=", variables.Integer, variables.Integer, &genNotEquals{})
+	opm.Set("==", variables.Integer, variables.Integer, &genEquals{})
 
 	opm.Set("+", variables.String, variables.String, &plusStrings{})
 	opm.Set("+", variables.Integer, variables.String, &coercedPlusString{})
@@ -63,7 +65,10 @@ func Default() *OpMap {
 	opm.Set("||", variables.Boolean, variables.Boolean, &orBools{})
 
 	opm.Set("==", variables.String, variables.String, &genEquals{})
-	opm.Set("==", variables.Integer, variables.Integer, &genEquals{})
+	opm.Set("!=", variables.String, variables.String, &genNotEquals{})
+
+	opm.Set("==", variables.Void, variables.Void, &equalsAlwaysTrue{})
+	opm.Set("!=", variables.Void, variables.Void, &equalsAlwaysFalse{})
 	return opm
 }
 

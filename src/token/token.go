@@ -6,21 +6,20 @@ import (
 	uni "unicode"
 )
 
-func tokenizeStmt(par *parser.Parser[rune]) ([]Token, error) {
+func tokenize(par *parser.Parser[rune]) ([]Token, error) {
 	tk := &tkzr{
 		Par: par,
 	}
-	var stmt []Token
+	var toks []Token
 	a := func(tok Token) {
-		stmt = append(stmt, tok)
+		toks = append(toks, tok)
 	}
 	for tk.Par.HasCurr {
 		switch {
 		case shouldIgnore(par.Curr):
 			tk.Par.Advance()
 		case isRuneReserved(tk.Par.Curr, Term): // begin reserved characters
-			tk.Par.Advance()
-			return stmt, nil
+			a(tk.parseReservedSingleRuneTok(Term))
 		case isRuneReserved(tk.Par.Curr, Quote):
 			strTok, err := parseStringLiteral(par)
 			if err != nil {
@@ -34,17 +33,15 @@ func tokenizeStmt(par *parser.Parser[rune]) ([]Token, error) {
 			}
 			a(tok)
 		case isRuneReserved(tk.Par.Curr, OpenBrace): // begin containers
-			a(parseReservedSingleRuneTok(par, OpenBrace))
-			return stmt, nil
+			a(tk.parseReservedSingleRuneTok(OpenBrace))
 		case isRuneReserved(tk.Par.Curr, CloseBrace):
-			a(parseReservedSingleRuneTok(par, CloseBrace))
-			return stmt, nil
+			a(tk.parseReservedSingleRuneTok(CloseBrace))
 		case isRuneReserved(tk.Par.Curr, Comma):
-			a(parseReservedSingleRuneTok(par, Comma))
+			a(tk.parseReservedSingleRuneTok(Comma))
 		case isRuneReserved(tk.Par.Curr, OpenParen):
-			a(parseReservedSingleRuneTok(par, OpenParen))
+			a(tk.parseReservedSingleRuneTok(OpenParen))
 		case isRuneReserved(tk.Par.Curr, CloseParen):
-			a(parseReservedSingleRuneTok(par, CloseParen))
+			a(tk.parseReservedSingleRuneTok(CloseParen))
 		case uni.IsDigit(par.Curr):
 			numTok, err := parseNumLiteral(par)
 			if err != nil {
@@ -62,53 +59,36 @@ func tokenizeStmt(par *parser.Parser[rune]) ([]Token, error) {
 		}
 	}
 
-	if len(stmt) == 0 {
+	if len(toks) == 0 {
 		return nil, nil
 	}
-	return nil, ggErrs.Runtime("unexpected end of input (missing ; maybe?)\n%s", par.String())
+	return toks, nil
 }
 
 type tkzr struct {
 	Par *parser.Parser[rune]
 }
 
-func (t *tkzr) consume() {
-	t.Par.Advance()
-}
-
-func TokenizeRunes(ins []rune) ([][]Token, error) {
+func TokenizeRunes(ins []rune) ([]Token, error) {
 	par := parser.New(ins)
 	par.SetStringer(func(in rune) string {
 		return string(in)
 	})
 	par.SetSeparator("")
 
-	var stmts [][]Token
-
-	for par.HasCurr {
-		stmt, err := tokenizeStmt(par)
-		if err != nil {
-			return nil, err
-		}
-		if len(stmt) == 0 {
-			break
-		}
-		stmts = append(stmts, stmt)
-	}
-
-	return stmts, nil
+	return tokenize(par)
 }
 
-func parseReservedSingleRuneTok(p *parser.Parser[rune], tokType Type) Token {
-	curr := p.Curr
+func (t *tkzr) parseReservedSingleRuneTok(tokType Type) Token {
+	curr := t.Par.Curr
 	ret := Token{
-		Start:     p.Index(),
-		End:       p.Index() + 1,
+		Start:     t.Par.Index(),
+		End:       t.Par.Index() + 1,
 		Str:       string(curr),
 		TokenType: tokType,
 	}
 
-	p.Advance()
+	t.Par.Advance()
 	return ret
 }
 

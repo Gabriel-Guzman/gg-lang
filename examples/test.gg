@@ -1,8 +1,39 @@
+print("if else tests");
+x = 4;
+if x == 4 {
+    print("x is 4");
+}
+
+if x != 4 {
+    print("x is not 4");
+} else if true {
+    print("else if clause");
+}
+
+if false {} else {
+    print("else clause");
+}
+
+print("begin builtins test (this is print test)");
+print("5: " + len("hello"));
+print("end builtins test");
+
+print("being coercion tests");
+print(true + ": true");
+print("true: " + true);
+print(false + ": false");
+print("false: " + false);
+print("1: " + 1);
+print(1 + ": 1");
+print("end coercion tests");
+
+print("being loop tests");
 x = 4;
 for x > 0 {
     print("i'm going for 4!!!");
-    x = x -1;
+    x = x - 1;
 }
+print("end loop tests");
 
 print("begin math tests");
 x = 6 / 2 * 5 + 1;

@@ -2,6 +2,24 @@ package operators
 
 import "gg-lang/src/variables"
 
+type equalsAlwaysTrue struct{}
+
+func (e *equalsAlwaysTrue) Evaluate(left, right interface{}) interface{} {
+	return true
+}
+func (e *equalsAlwaysTrue) ResultType() variables.VarType {
+	return variables.Boolean
+}
+
+type equalsAlwaysFalse struct{}
+
+func (e *equalsAlwaysFalse) Evaluate(left, right interface{}) interface{} {
+	return false
+}
+func (e *equalsAlwaysFalse) ResultType() variables.VarType {
+	return variables.Boolean
+}
+
 type genEquals struct{}
 
 func (g *genEquals) Evaluate(left, right interface{}) interface{} {
@@ -9,6 +27,15 @@ func (g *genEquals) Evaluate(left, right interface{}) interface{} {
 }
 
 func (g *genEquals) ResultType() variables.VarType {
+	return variables.Boolean
+}
+
+type genNotEquals struct{}
+
+func (g *genNotEquals) Evaluate(left, right interface{}) interface{} {
+	return left != right
+}
+func (g *genNotEquals) ResultType() variables.VarType {
 	return variables.Boolean
 }
 
