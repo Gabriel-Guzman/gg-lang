@@ -65,6 +65,17 @@ func (fde *FunctionDeclExpression) SetStatements(s []Expression) {
 	fde.Body = s
 }
 
+type IfElseExpression struct {
+	Condition      ValueExpression
+	Body           []Expression
+	ElseExpression []Expression // optional
+}
+
+func (ife *IfElseExpression) Kind() ExpressionKind { return ExprIfElse }
+func (ife *IfElseExpression) SetStatements(s []Expression) {
+	ife.Body = s
+}
+
 // for i != 10 {
 type ForLoopExpression struct {
 	Condition ValueExpression

@@ -48,6 +48,8 @@ const (
 	beginKeywords
 	Function
 	For
+	If
+	Else
 	endKeywords
 )
 
@@ -113,6 +115,8 @@ var reservedTokens = map[Type]string{
 	// keyword
 	Function: "routine",
 	For:      "for",
+	If:       "if",
+	Else:     "else",
 }
 
 var reservedTokensMap = map[string]Type{}

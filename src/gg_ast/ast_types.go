@@ -22,6 +22,7 @@ const (
 	ExprAssignment
 	ExprFuncDecl
 	ExprForLoop
+	ExprIfElse
 )
 
 type Expression interface {

@@ -31,6 +31,9 @@ func parseStatement(p *parser.Parser[token.Token]) (Expression, error) {
 	if p.Curr.TokenType == token.For {
 		return parseForLoopExpr(p)
 	}
+	if p.Curr.TokenType == token.If {
+		return parseIfElseExpr(p)
+	}
 
 	// now it could be a function call or an assignment expression, both of which
 	// have to start with an identifier. this means no unassigned value expressions
@@ -81,6 +84,23 @@ func parseForLoopExpr(p *parser.Parser[token.Token]) (*ForLoopExpression, error)
 	}
 
 	return &ForLoopExpression{Condition: condition}, nil
+}
+
+func parseIfElseExpr(p *parser.Parser[token.Token]) (*IfElseExpression, error) {
+	if !advanceIfCurrIs(p, token.If) { // eat the if keyword
+		return nil, ggErrs.Crit("expected 'if' keyword in expression parser\n%s", p.String())
+	}
+
+	condition, err := parseValueExpr(p)
+	if err != nil {
+		return nil, err
+	}
+
+	if !advanceIfCurrIs(p, token.OpenBrace) {
+		return nil, ggErrs.Syntax("expected '{' after if condition\n%s", p.String())
+	}
+
+	return &IfElseExpression{Condition: condition}, nil
 }
 
 func parseFuncDecl(p *parser.Parser[token.Token]) (*FunctionDeclExpression, error) {
