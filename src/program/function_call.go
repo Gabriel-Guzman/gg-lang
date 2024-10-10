@@ -3,23 +3,23 @@ package program
 import (
 	"gg-lang/src/ggErrs"
 	"gg-lang/src/gg_ast"
-	variable2 "gg-lang/src/variable"
+	"gg-lang/src/variable"
 )
 
-func (p *Program) call(f *gg_ast.FunctionCallExpression) (*variable2.RuntimeValue, error) {
-	variable := p.currentScope().findVariable(f.Name())
-	if variable == nil {
+func (p *Program) call(f *gg_ast.FunctionCallExpression) (*variable.RuntimeValue, error) {
+	v := p.currentScope().findVariable(f.Name())
+	if v == nil {
 		return nil, ggErrs.Runtime("undefined function %s, evaluating\n%s", f.Id.Raw, gg_ast.NoBuilderExprString(f))
 	}
 
 	// check if callable
-	if variable.RuntimeValue.Typ != variable2.Function &&
-		variable.RuntimeValue.Typ != variable2.BuiltinFunction {
+	if v.RuntimeValue.Typ != variable.Function &&
+		v.RuntimeValue.Typ != variable.BuiltinFunction {
 		return nil, ggErrs.Runtime("%s is not callable, evaluating\n%s", f.Id.Raw, gg_ast.NoBuilderExprString(f))
 	}
 
 	// build values for arguments
-	vals := make([]*variable2.RuntimeValue, len(f.Args))
+	vals := make([]*variable.RuntimeValue, len(f.Args))
 	for i, arg := range f.Args {
 		value, err := p.evaluateValueExpr(arg)
 		if err != nil {
@@ -30,23 +30,23 @@ func (p *Program) call(f *gg_ast.FunctionCallExpression) (*variable2.RuntimeValu
 	}
 
 	// run builtin
-	if bn, ok := variable.RuntimeValue.Val.(Func); ok {
+	if bn, ok := v.RuntimeValue.Val.(Func); ok {
 		return p.builtinFuncCall(bn, vals)
 	}
 
 	// set up func expression
-	runtimeFunc := variable.RuntimeValue.Val.(*RuntimeFunc)
+	runtimeFunc := v.RuntimeValue.Val.(*RuntimeFunc)
 	if len(runtimeFunc.Decl.Params) != len(f.Args) {
 		return nil, ggErrs.Runtime("param count mismatch on %s, evaluating\n%s", f.Id.Raw, gg_ast.NoBuilderExprString(f))
 	}
 
 	// build variables for new scope
-	var scopedVariables []variable2.Variable
+	var scopedVariables []variable.Variable
 	for i := range f.Args {
 		value := vals[i]
 
 		name := runtimeFunc.Decl.Params[i]
-		scopedVariables = append(scopedVariables, variable2.Variable{
+		scopedVariables = append(scopedVariables, variable.Variable{
 			Name:         name,
 			RuntimeValue: value,
 		})
@@ -72,12 +72,12 @@ func (p *Program) call(f *gg_ast.FunctionCallExpression) (*variable2.RuntimeValu
 			return ret, nil
 		}
 	}
-	return &variable2.RuntimeValue{
-		Typ: variable2.Void,
+	return &variable.RuntimeValue{
+		Typ: variable.Void,
 	}, nil
 }
 
-func (p *Program) builtinFuncCall(f Func, args []*variable2.RuntimeValue) (*variable2.RuntimeValue, error) {
+func (p *Program) builtinFuncCall(f Func, args []*variable.RuntimeValue) (*variable.RuntimeValue, error) {
 	res, err := f.Call(args...)
 	if err != nil {
 		return nil, err

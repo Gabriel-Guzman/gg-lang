@@ -1,4 +1,4 @@
-package gg_ast
+package operators
 
 import (
 	"fmt"

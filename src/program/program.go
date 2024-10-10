@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gg-lang/src/ggErrs"
 	"gg-lang/src/gg_ast"
+	"gg-lang/src/operators"
 	"gg-lang/src/stack"
 	"gg-lang/src/variable"
 	"os"
@@ -43,7 +44,7 @@ func (s *Scope) softDeclareVar(name string, value *variable.RuntimeValue) (*vari
 
 type Program struct {
 	scopes *stack.Stack[*Scope]
-	opMap  *gg_ast.OpMap
+	opMap  *operators.OpMap
 
 	returnValue *variable.RuntimeValue
 }
@@ -70,7 +71,7 @@ func New() *Program {
 	scopes := stack.New[*Scope]()
 	prog := &Program{
 		scopes: scopes,
-		opMap:  gg_ast.Default(),
+		opMap:  operators.Default(),
 	}
 	prog.enterNewScope()
 
@@ -220,7 +221,6 @@ func (p *Program) enterNewScope() {
 		Parent:    p.currentScope(),
 		variables: make(map[string]*variable.Variable),
 	}
-
 	p.scopes.Push(ns)
 }
 

@@ -1,4 +1,4 @@
-package gg_ast
+package operators
 
 import (
 	"fmt"
@@ -23,11 +23,9 @@ func (o *OpMap) Get(name string, left, right variable.VarType) (Operator, bool) 
 	op, ok := o.ops[opKey(name, left, right)]
 	return op, ok
 }
-
 func (o *OpMap) Set(name string, left, right variable.VarType, op Operator) {
 	o.ops[opKey(name, left, right)] = op
 }
-
 func (o *OpMap) String() string {
 	var sb strings.Builder
 	for key, op := range o.ops {

@@ -2,6 +2,7 @@ package gg_ast
 
 import (
 	"gg-lang/src/ggErrs"
+	"gg-lang/src/operators"
 	"gg-lang/src/parser"
 	"gg-lang/src/token"
 )
@@ -260,7 +261,7 @@ func parseValueExpr(p *parser.Parser[token.Token]) (ValueExpression, error) {
 			return nil, err
 		}
 
-		if LeftFirst(lhs.Op, op.Str) {
+		if operators.LeftFirst(lhs.Op, op.Str) {
 			// left needs to be evaluated first and therefor deeper into the tree
 			lhs = &BinaryExpression{
 				Lhs: lhs,
@@ -278,8 +279,7 @@ func parseValueExpr(p *parser.Parser[token.Token]) (ValueExpression, error) {
 	return lhs, nil
 }
 
-// A primary expression is either an identifier, a literal, a function call,
-// or as a special case, a binary expression if it is a unary operator
+// A primary expression is either an identifier, a literal, a function call, a unary binary expression, or a function declaration
 func parsePrimaryExpr(p *parser.Parser[token.Token]) (ValueExpression, error) {
 	if !p.HasCurr {
 		return nil, ggErrs.Runtime("unexpected end of expression\n%s", p.String())
