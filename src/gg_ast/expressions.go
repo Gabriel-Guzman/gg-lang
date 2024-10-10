@@ -71,6 +71,9 @@ func (fde *FunctionDeclExpression) Kind() ExpressionKind { return ExprFuncDecl }
 func (fde *FunctionDeclExpression) SetStatements(s []Expression) {
 	fde.Body = s
 }
+func (fde *FunctionDeclExpression) Name() string {
+	return fde.Target.Name()
+}
 
 // if a == b { } else if a == c { } else { }
 type IfElseStatement struct {

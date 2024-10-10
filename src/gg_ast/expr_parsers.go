@@ -2,7 +2,6 @@ package gg_ast
 
 import (
 	"gg-lang/src/ggErrs"
-	"gg-lang/src/operators"
 	"gg-lang/src/parser"
 	"gg-lang/src/token"
 )
@@ -18,6 +17,7 @@ The parser should be at its initial state, i.e. with the current index set to 0 
 pointing to the first token in the expression.
 After a successful parse, the parser should be pointing to the token after the expression
 */
+
 // a statement is a function call, declaration, assignment expression, or a for loop expression
 // it is up to the builder to disallow these expressions if it's not parsing the top level
 func parseStatement(p *parser.Parser[token.Token]) (Expression, error) {
@@ -260,7 +260,7 @@ func parseValueExpr(p *parser.Parser[token.Token]) (ValueExpression, error) {
 			return nil, err
 		}
 
-		if operators.LeftFirst(lhs.Op, op.Str) {
+		if LeftFirst(lhs.Op, op.Str) {
 			// left needs to be evaluated first and therefor deeper into the tree
 			lhs = &BinaryExpression{
 				Lhs: lhs,
@@ -288,7 +288,7 @@ func parsePrimaryExpr(p *parser.Parser[token.Token]) (ValueExpression, error) {
 	// unary operators
 	if p.Curr.TokenType == token.Minus {
 		p.Advance()
-		id, err := parseIdentifier(p)
+		toNegate, err := parsePrimaryExpr(p)
 		if err != nil {
 			return nil, err
 		}
@@ -299,20 +299,25 @@ func parsePrimaryExpr(p *parser.Parser[token.Token]) (ValueExpression, error) {
 				idKind: IdExprNumber,
 			},
 			Op:  "*",
-			Rhs: id,
+			Rhs: toNegate,
 		}, nil
-	} else {
-		id, err := parseIdentifier(p)
-		if err != nil {
-			return nil, err
-		}
-
-		if p.Curr.TokenType == token.OpenParen {
-			return parseFuncCallExpr(id, p)
-		} else {
-			return id, nil
-		}
 	}
+
+	if p.Curr.TokenType == token.Function {
+		return parseFuncDecl(p)
+	}
+
+	id, err := parseIdentifier(p)
+	if err != nil {
+		return nil, err
+	}
+
+	if p.Curr.TokenType == token.OpenParen {
+		return parseFuncCallExpr(id, p)
+	} else {
+		return id, nil
+	}
+
 }
 
 func parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (ValueExpression, error) {

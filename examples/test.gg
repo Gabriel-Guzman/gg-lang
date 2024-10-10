@@ -74,10 +74,27 @@ routine helloWithMultilineStatement() {
     print(x);
 }
 
+routine captureTest() {
+    y = 1;
+    return routine innerCapture() {
+        y = y + 1;
+        print("y from inner: " + y);
+    };
+}
+
+routine returnValue() {
+    return "return value from func";
+}
 print("end func decls");
 print("begin func calls");
+captest = captureTest();
+captest();
+captest();
+captest();
 hello();
 helloWithBody();
 helloWithMultilineStatement();
 helloWithArg("helloWithArgPrint");
+print(returnValue());
+
 print("end func calls");

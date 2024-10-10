@@ -1,8 +1,8 @@
-package builtin
+package program
 
 import (
 	"gg-lang/src/ggErrs"
-	"gg-lang/src/variables"
+	"gg-lang/src/variable"
 )
 
 /* type Func interface {
@@ -16,16 +16,16 @@ func (l *Length) Name() string {
 	return "len"
 }
 
-func (l *Length) Call(args ...*variables.RuntimeValue) (*variables.RuntimeValue, error) {
+func (l *Length) Call(args ...*variable.RuntimeValue) (*variable.RuntimeValue, error) {
 	if len(args) != 1 {
 		return nil, ggErrs.Runtime("len expects one argument")
 	}
 
 	switch args[0].Typ {
-	case variables.String:
-		return &variables.RuntimeValue{
+	case variable.String:
+		return &variable.RuntimeValue{
 			Val: len(args[0].Val.(string)),
-			Typ: variables.Integer,
+			Typ: variable.Integer,
 		}, nil
 	default:
 		return nil, ggErrs.Runtime("len argument must be a string, got %s", args[0].Typ.String())

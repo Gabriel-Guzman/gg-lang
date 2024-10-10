@@ -1,6 +1,8 @@
-package operators
+package gg_ast
 
-import "gg-lang/src/variables"
+import (
+	"gg-lang/src/variable"
+)
 
 // int + int
 type plusInts struct{}
@@ -9,8 +11,8 @@ func (p *plusInts) Evaluate(left, right interface{}) interface{} {
 	return left.(int) + right.(int)
 }
 
-func (p *plusInts) ResultType() variables.VarType {
-	return variables.Integer
+func (p *plusInts) ResultType() variable.VarType {
+	return variable.Integer
 }
 
 // int - int
@@ -20,8 +22,8 @@ func (m *minusInts) Evaluate(left, right interface{}) interface{} {
 	return left.(int) - right.(int)
 }
 
-func (m *minusInts) ResultType() variables.VarType {
-	return variables.Integer
+func (m *minusInts) ResultType() variable.VarType {
+	return variable.Integer
 }
 
 // int * int
@@ -31,8 +33,8 @@ func (m *mulInts) Evaluate(left, right interface{}) interface{} {
 	return left.(int) * right.(int)
 }
 
-func (m *mulInts) ResultType() variables.VarType {
-	return variables.Integer
+func (m *mulInts) ResultType() variable.VarType {
+	return variable.Integer
 }
 
 // int / int
@@ -42,8 +44,8 @@ func (d *divInts) Evaluate(left, right interface{}) interface{} {
 	return left.(int) / right.(int)
 }
 
-func (d *divInts) ResultType() variables.VarType {
-	return variables.Integer
+func (d *divInts) ResultType() variable.VarType {
+	return variable.Integer
 }
 
 // int < int
@@ -52,7 +54,7 @@ type lessThanInts struct{}
 func (l *lessThanInts) Evaluate(left, right interface{}) interface{} {
 	return left.(int) < right.(int)
 }
-func (l *lessThanInts) ResultType() variables.VarType { return variables.Boolean }
+func (l *lessThanInts) ResultType() variable.VarType { return variable.Boolean }
 
 // int > int
 type greaterThanInts struct{}
@@ -60,7 +62,7 @@ type greaterThanInts struct{}
 func (g *greaterThanInts) Evaluate(left, right interface{}) interface{} {
 	return left.(int) > right.(int)
 }
-func (g *greaterThanInts) ResultType() variables.VarType { return variables.Boolean }
+func (g *greaterThanInts) ResultType() variable.VarType { return variable.Boolean }
 
 // int <= int
 type lessThanEqualInts struct{}
@@ -68,7 +70,7 @@ type lessThanEqualInts struct{}
 func (l *lessThanEqualInts) Evaluate(left, right interface{}) interface{} {
 	return left.(int) <= right.(int)
 }
-func (l *lessThanEqualInts) ResultType() variables.VarType { return variables.Boolean }
+func (l *lessThanEqualInts) ResultType() variable.VarType { return variable.Boolean }
 
 // int >= int
 type greaterThanEqualInts struct{}
@@ -76,4 +78,4 @@ type greaterThanEqualInts struct{}
 func (g *greaterThanEqualInts) Evaluate(left, right interface{}) interface{} {
 	return left.(int) >= right.(int)
 }
-func (g *greaterThanEqualInts) ResultType() variables.VarType { return variables.Boolean }
+func (g *greaterThanEqualInts) ResultType() variable.VarType { return variable.Boolean }

@@ -27,7 +27,7 @@ func tokenize(par *parser.Parser[rune]) ([]Token, error) {
 			}
 			a(strTok)
 		case isReserved(string(par.Curr)) && lookup(string(par.Curr)).IsOperator():
-			tok, err := _parseOperator(par)
+			tok, err := parseOperator(par)
 			if err != nil {
 				return nil, err
 			}
@@ -145,7 +145,7 @@ func parseNumLiteral(p *parser.Parser[rune]) (Token, error) {
 	num := ""
 
 	for {
-		if p.HasCurr && (uni.IsDigit(p.Curr)) {
+		if p.HasCurr && uni.IsDigit(p.Curr) {
 			num += string(p.Curr)
 			p.Advance()
 			continue
@@ -166,7 +166,7 @@ func parseNumLiteral(p *parser.Parser[rune]) (Token, error) {
 	}, nil
 }
 
-func _parseOperator(p *parser.Parser[rune]) (Token, error) {
+func parseOperator(p *parser.Parser[rune]) (Token, error) {
 	start := p.Index()
 	if !p.HasCurr {
 		return Token{}, ggErrs.Crit("operator parser called with nothing in parser\n%s", p.String())

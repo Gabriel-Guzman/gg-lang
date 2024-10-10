@@ -3,11 +3,11 @@ package program
 import (
 	"gg-lang/src/ggErrs"
 	"gg-lang/src/gg_ast"
-	"gg-lang/src/variables"
+	"gg-lang/src/variable"
 	"strconv"
 )
 
-func (p *Program) evaluateValueExpr(expr gg_ast.ValueExpression) (*variables.RuntimeValue, error) {
+func (p *Program) evaluateValueExpr(expr gg_ast.ValueExpression) (*variable.RuntimeValue, error) {
 	switch expr.Kind() {
 	case gg_ast.ExprVariable:
 		name := expr.(*gg_ast.Identifier).Name()
@@ -22,9 +22,9 @@ func (p *Program) evaluateValueExpr(expr gg_ast.ValueExpression) (*variables.Run
 		if err != nil {
 			return nil, ggErrs.Crit("unable to evaluate int literal: %s", err.Error())
 		}
-		return &variables.RuntimeValue{
+		return &variable.RuntimeValue{
 			Val: intVal,
-			Typ: variables.Integer,
+			Typ: variable.Integer,
 		}, nil
 	case gg_ast.ExprBoolLiteral:
 		name := expr.(*gg_ast.Identifier).Name()
@@ -32,14 +32,14 @@ func (p *Program) evaluateValueExpr(expr gg_ast.ValueExpression) (*variables.Run
 		if err != nil {
 			return nil, ggErrs.Crit("unable to evaluate bool literal: %s", err.Error())
 		}
-		return &variables.RuntimeValue{
+		return &variable.RuntimeValue{
 			Val: boolVal,
-			Typ: variables.Boolean,
+			Typ: variable.Boolean,
 		}, nil
 	case gg_ast.ExprStringLiteral:
-		return &variables.RuntimeValue{
+		return &variable.RuntimeValue{
 			Val: expr.(*gg_ast.Identifier).Name(),
-			Typ: variables.String,
+			Typ: variable.String,
 		}, nil
 	case gg_ast.ExprBinary:
 		binExp := expr.(*gg_ast.BinaryExpression)
@@ -63,13 +63,19 @@ func (p *Program) evaluateValueExpr(expr gg_ast.ValueExpression) (*variables.Run
 		value := op.Evaluate(left.Val, right.Val)
 		resultType := op.ResultType()
 
-		return &variables.RuntimeValue{
+		return &variable.RuntimeValue{
 			Val: value,
 			Typ: resultType,
 		}, nil
 	case gg_ast.ExprFunctionCall:
 		f := expr.(*gg_ast.FunctionCallExpression)
 		return p.call(f)
+	case gg_ast.ExprFuncDecl:
+		decl := expr.(*gg_ast.FunctionDeclExpression)
+		return &variable.RuntimeValue{
+			Val: RuntimeFuncFromDecl(decl, p.currentScope()),
+			Typ: variable.Function,
+		}, nil
 	default:
 		return nil, ggErrs.Crit("evaluateValueExpr: invalid expression type: %v", expr)
 	}

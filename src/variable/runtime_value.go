@@ -1,4 +1,4 @@
-package variables
+package variable
 
 import (
 	"gg-lang/src/ggErrs"
@@ -21,7 +21,6 @@ func CoerceTo(val interface{}, targetType VarType) (interface{}, error) {
 		return nil, ggErrs.Runtime("failed to coerce value of type %T to %s", val, targetType.String())
 	}
 }
-
 func CoerceFromBool(val bool, targetType VarType) (interface{}, error) {
 	switch targetType {
 	case String:

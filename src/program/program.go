@@ -2,27 +2,28 @@ package program
 
 import (
 	"fmt"
-	"gg-lang/src/builtin"
 	"gg-lang/src/ggErrs"
 	"gg-lang/src/gg_ast"
-	"gg-lang/src/operators"
-	"gg-lang/src/variables"
+	"gg-lang/src/stack"
+	"gg-lang/src/variable"
 	"os"
 	"strings"
 )
 
 type Scope struct {
 	Parent    *Scope
-	variables map[string]*variables.Variable
+	variables map[string]*variable.Variable
+
+	caller *RuntimeFunc
 }
 
 // declares a variables.Variable in the Program.current Scope and checks if it's already declared
-func (s *Scope) declareVar(name string, value *variables.RuntimeValue) (*variables.Variable, error) {
+func (s *Scope) declareVar(name string, value *variable.RuntimeValue) (*variable.Variable, error) {
 	_, ok := s.variables[name]
 	if ok {
 		return nil, ggErrs.Runtime("variable '%s' already declared in this scope\n%v", name, s)
 	}
-	v := &variables.Variable{
+	v := &variable.Variable{
 		Name:         name,
 		RuntimeValue: value,
 	}
@@ -31,8 +32,8 @@ func (s *Scope) declareVar(name string, value *variables.RuntimeValue) (*variabl
 }
 
 // declares a variables.Variable in the Program.current Scope without checking if it's already declared
-func (s *Scope) softDeclareVar(name string, value *variables.RuntimeValue) (*variables.Variable, error) {
-	v := &variables.Variable{
+func (s *Scope) softDeclareVar(name string, value *variable.RuntimeValue) (*variable.Variable, error) {
+	v := &variable.Variable{
 		Name:         name,
 		RuntimeValue: value,
 	}
@@ -40,21 +41,22 @@ func (s *Scope) softDeclareVar(name string, value *variables.RuntimeValue) (*var
 	return v, nil
 }
 
-// declares a variables.Variable in the Program.top Scope and checks if it's already declared
-func (p *Program) declareVarTop(name string, value *variables.RuntimeValue) (*variables.Variable, error) {
-	return p.top.declareVar(name, value)
+type Program struct {
+	scopes *stack.Stack[*Scope]
+	opMap  *gg_ast.OpMap
+
+	returnValue *variable.RuntimeValue
 }
 
-type Program struct {
-	top     *Scope
-	current *Scope
-	opMap   *operators.OpMap
+func (p *Program) currentScope() *Scope {
+	curr, _ := p.scopes.Peek()
+	return curr
 }
 
 func (p *Program) String() string {
 	var sb strings.Builder
 	sb.WriteString("Variables:\n")
-	for k, v := range p.top.variables {
+	for k, v := range p.currentScope().variables {
 		sb.WriteString(fmt.Sprintf("\t%s: %+v\n", k, v))
 	}
 	sb.WriteString("\nOperators:\n")
@@ -65,33 +67,28 @@ func (p *Program) String() string {
 // New initializes the top Scope, declares every default builtin.Func,
 // and registers every default operators.Operator
 func New() *Program {
-	top := &Scope{variables: make(map[string]*variables.Variable)}
+	scopes := stack.New[*Scope]()
 	prog := &Program{
-		top:     top,
-		current: top,
-		opMap:   operators.Default(),
+		scopes: scopes,
+		opMap:  gg_ast.Default(),
 	}
+	prog.enterNewScope()
 
-	for _, fn := range builtin.Defaults() {
-		_, err := prog.declareVarTop(fn.Name(), &variables.RuntimeValue{
+	for _, fn := range Defaults() {
+		_, err := prog.currentScope().declareVar(fn.Name(), &variable.RuntimeValue{
 			Val: fn,
-			Typ: variables.BuiltinFunction,
+			Typ: variable.BuiltinFunction,
 		})
 		if err != nil {
 			return nil
 		}
 	}
 
-	return &Program{
-		top:     top,
-		current: top,
-		opMap:   operators.Default(),
-	}
+	return prog
 }
 
 // a shortcut for executing a string of code
 func (p *Program) RunString(code string) error {
-
 	ast, err := gg_ast.BuildFromString(code)
 	ggErrs.Handle(err)
 	if err != nil {
@@ -130,7 +127,18 @@ func (p *Program) runBlockStmtNewScope(block gg_ast.BlockStatement) error {
 }
 
 func (p *Program) RunStmt(expr gg_ast.Expression) error {
+	// dont execute anything if there's a return value right now
+	if p.returnValue != nil {
+		return nil
+	}
 	switch expr.Kind() {
+	case gg_ast.ExprReturn:
+		ret := expr.(*gg_ast.ReturnStatement)
+		val, err := p.evaluateValueExpr(ret.Value)
+		if err != nil {
+			return err
+		}
+		p.returnValue = val
 	case gg_ast.ExprBlock:
 		block := expr.(gg_ast.BlockStatement)
 		err := p.runBlockStmtNewScope(block)
@@ -143,9 +151,9 @@ func (p *Program) RunStmt(expr gg_ast.Expression) error {
 		}
 	case gg_ast.ExprFuncDecl:
 		decl := expr.(*gg_ast.FunctionDeclExpression)
-		_, err := p.declareVarTop(decl.Target.Raw, &variables.RuntimeValue{
-			Val: decl,
-			Typ: variables.Function,
+		_, err := p.currentScope().declareVar(decl.Target.Raw, &variable.RuntimeValue{
+			Val: RuntimeFuncFromDecl(decl, p.currentScope()),
+			Typ: variable.Function,
 		})
 		if err != nil {
 			return err
@@ -157,7 +165,7 @@ func (p *Program) RunStmt(expr gg_ast.Expression) error {
 			if err != nil {
 				return err
 			}
-			if val.Typ != variables.Boolean {
+			if val.Typ != variable.Boolean {
 				return ggErrs.Runtime("loop condition must evaluate to bool\n%+v", expr)
 			}
 
@@ -175,7 +183,7 @@ func (p *Program) RunStmt(expr gg_ast.Expression) error {
 		if err != nil {
 			return err
 		}
-		if cond.Typ != variables.Boolean {
+		if cond.Typ != variable.Boolean {
 			return ggErrs.Runtime("if condition must evaluate to bool\n%+v", expr)
 		}
 		if cond.Val.(bool) {
@@ -206,35 +214,47 @@ func (p *Program) RunStmt(expr gg_ast.Expression) error {
 
 func (p *Program) enterNewScope() {
 	ns := &Scope{
-		Parent:    p.current,
-		variables: make(map[string]*variables.Variable),
+		// NOTE: the current scope is the new scopes parent here.
+		// this will not always be the case, when a function decl captures a scope,
+		// it may have push a scope with a parent other than the current scope.
+		Parent:    p.currentScope(),
+		variables: make(map[string]*variable.Variable),
 	}
 
-	p.current = ns
+	p.scopes.Push(ns)
+}
+
+func (p *Program) enterCapturedScope(scope *Scope) {
+	p.scopes.Push(scope)
 }
 
 func (p *Program) exitScope() {
-	if p.current == p.top {
+	p.scopes.Pop()
+	if p.currentScope() == nil {
 		fmt.Println("exitScope called on top scope. Goodbye!")
 		os.Exit(1)
 	}
-	p.current = p.current.Parent
 }
 
-func (p *Program) findVariable(name string) *variables.Variable {
-	s := p.current
+func (s *Scope) findVariable(name string) *variable.Variable {
+	c := s
 	for {
-		res, ok := s.variables[name]
+		res, ok := c.variables[name]
 		if ok {
 			return res
 		}
 
-		if s.Parent == nil {
+		if c.Parent == nil {
 			return nil
 		}
 
-		s = s.Parent
+		c = c.Parent
 	}
+}
+
+// a shortcut for querying a variable in the 'current' scope
+func (p *Program) findVariable(name string) *variable.Variable {
+	return p.currentScope().findVariable(name)
 }
 
 func (p *Program) evaluateAssignment(expr *gg_ast.AssignmentExpression) error {
@@ -257,6 +277,6 @@ func (p *Program) evaluateAssignment(expr *gg_ast.AssignmentExpression) error {
 		return nil
 	}
 
-	_, err = p.current.softDeclareVar(expr.Target.Raw, val)
+	_, err = p.currentScope().softDeclareVar(expr.Target.Raw, val)
 	return err
 }

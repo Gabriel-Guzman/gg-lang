@@ -21,9 +21,9 @@ func parseBlockStatement(par *parser.Parser[token.Token]) (BlockStatement, error
 		}
 
 		stmt, err := parseStatement(par)
-		if _, ok := stmt.(*FunctionDeclExpression); ok {
-			return nil, ggErrs.Runtime("function declaration inside block statement is not allowed\n%s", par.String())
-		}
+		//if _, ok := stmt.(*FunctionDeclExpression); ok {
+		//	return nil, ggErrs.Runtime("function declaration inside block statement is not allowed\n%s", par.String())
+		//}
 		if err != nil {
 			return nil, err
 		}
