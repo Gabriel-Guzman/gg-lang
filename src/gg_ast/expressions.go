@@ -79,7 +79,7 @@ func (fde *FunctionDeclExpression) Name() string {
 type IfElseStatement struct {
 	Condition      ValueExpression
 	Body           BlockStatement
-	ElseExpression Expression // optional
+	ElseExpression *IfElseStatement // optional
 }
 
 func (ife *IfElseStatement) Kind() ExpressionKind { return ExprIfElse }

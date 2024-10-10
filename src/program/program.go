@@ -180,25 +180,9 @@ func (p *Program) RunStmt(expr gg_ast.Expression) error {
 		}
 	case gg_ast.ExprIfElse:
 		ifElse := expr.(*gg_ast.IfElseStatement)
-		cond, err := p.evaluateValueExpr(ifElse.Condition)
+		err := p.execIfElse(ifElse)
 		if err != nil {
 			return err
-		}
-		if cond.Typ != variable.Boolean {
-			return ggErrs.Runtime("if condition must evaluate to bool\n%+v", expr)
-		}
-		if cond.Val.(bool) {
-			err = p.runBlockStmtNewScope(ifElse.Body)
-			if err != nil {
-				return err
-			}
-		} else {
-			if ifElse.ElseExpression != nil {
-				err = p.RunStmt(ifElse.ElseExpression)
-				if err != nil {
-					return err
-				}
-			}
 		}
 	case gg_ast.ExprFunctionCall:
 		call := expr.(*gg_ast.FunctionCallExpression)
@@ -210,6 +194,31 @@ func (p *Program) RunStmt(expr gg_ast.Expression) error {
 		return ggErrs.Crit("Invalid top-level expression: %s", expr.Kind().String())
 	}
 
+	return nil
+}
+
+func (p *Program) execIfElse(expr *gg_ast.IfElseStatement) error {
+	ifElse := expr
+	cond, err := p.evaluateValueExpr(ifElse.Condition)
+	if err != nil {
+		return err
+	}
+	if cond.Typ != variable.Boolean {
+		return ggErrs.Runtime("if condition must evaluate to bool\n%+v", expr)
+	}
+	if cond.Val.(bool) {
+		err = p.runBlockStmtNewScope(ifElse.Body)
+		if err != nil {
+			return err
+		}
+	} else {
+		if ifElse.ElseExpression != nil {
+			err = p.execIfElse(ifElse.ElseExpression)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
