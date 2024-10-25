@@ -18,7 +18,7 @@ func tokenize(par *parser.Parser[rune]) ([]Token, error) {
 		switch {
 		case shouldIgnore(par.Curr):
 			tk.Par.Advance()
-		case isRuneReserved(tk.Par.Curr, Term): // begin reserved characters
+		case isRuneReserved(tk.Par.Curr, Term):
 			a(tk.parseReservedSingleRuneTok(Term))
 		case isRuneReserved(tk.Par.Curr, Quote):
 			strTok, err := parseStringLiteral(par)
@@ -32,7 +32,7 @@ func tokenize(par *parser.Parser[rune]) ([]Token, error) {
 				return nil, err
 			}
 			a(tok)
-		case isRuneReserved(tk.Par.Curr, OpenBrace): // begin containers
+		case isRuneReserved(tk.Par.Curr, OpenBrace):
 			a(tk.parseReservedSingleRuneTok(OpenBrace))
 		case isRuneReserved(tk.Par.Curr, CloseBrace):
 			a(tk.parseReservedSingleRuneTok(CloseBrace))

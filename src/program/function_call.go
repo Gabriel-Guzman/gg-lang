@@ -11,11 +11,11 @@ func (p *Program) call(f *gg_ast.FunctionCallExpression) (*variable.RuntimeValue
 	if v == nil {
 		return nil, ggErrs.Runtime("undefined function %s, evaluating\n%s", f.Id.Raw, gg_ast.NoBuilderExprString(f))
 	}
-
 	// check if callable
-	if v.RuntimeValue.Typ != variable.Function &&
-		v.RuntimeValue.Typ != variable.BuiltinFunction {
-		return nil, ggErrs.Runtime("%s is not callable, evaluating\n%s", f.Id.Raw, gg_ast.NoBuilderExprString(f))
+	if _, ok := v.RuntimeValue.Val.(Func); !ok {
+		if _, ok := v.RuntimeValue.Val.(*RuntimeFunc); !ok {
+			return nil, ggErrs.Runtime("%s is not callable, evaluating\n%s", f.Id.Raw, gg_ast.NoBuilderExprString(f))
+		}
 	}
 
 	// build values for arguments
@@ -51,16 +51,19 @@ func (p *Program) call(f *gg_ast.FunctionCallExpression) (*variable.RuntimeValue
 			RuntimeValue: value,
 		})
 	}
-	// enter the captured scope, and then a new one to temporarily save the arguments
+	// enter the captured scope
 	p.enterCapturedScope(runtimeFunc.CapturedScope)
 	p.enterNewScope()
 	defer p.exitScope()
 	defer p.exitScope()
 
+	// and then a new one to temporarily save the arguments
 	for _, v := range scopedVariables {
 		temp := v
 		p.currentScope().variables[temp.Name] = &temp
 	}
+
+	// run the function body
 	for _, stmt := range runtimeFunc.Decl.Body {
 		err := p.RunStmt(stmt)
 		if err != nil {

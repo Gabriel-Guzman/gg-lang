@@ -1,0 +1,24 @@
+routine captureTest() {
+    y = 1;
+    return routine innerCapture() {
+        y = y + 1;
+        print("y from inner: " + y);
+    };
+}
+
+captest = captureTest();
+captest();
+captest();
+captest();
+
+x = 1;
+routine add() {
+    x = x + 1;
+    print(x);
+}
+add();
+add();
+add();
+add();
+
+x = sh:git status

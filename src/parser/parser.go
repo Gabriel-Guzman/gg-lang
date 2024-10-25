@@ -1,11 +1,21 @@
 package parser
 
 import (
-	"gg-lang/src/iterator"
+	"fmt"
+	"strings"
 )
 
+type ItemPrinter[T any] func(in T) string
 type Parser[T any] struct {
-	iter *iterator.Iter[T]
+	items []T
+	curr  int
+
+	stringer  ItemPrinter[T]
+	separator string
+
+	TruncBefore  int
+	TruncAfter   int
+	WrapSelected bool
 
 	Curr    T
 	HasCurr bool
@@ -15,44 +25,62 @@ type Parser[T any] struct {
 }
 
 func (p *Parser[T]) SetSeparator(sep string) {
-	p.iter.Separator = sep
+	p.separator = sep
 }
 
-func (p *Parser[T]) SetStringer(s func(in T) string) {
-	p.iter.Stringer = s
+func (p *Parser[T]) SetStringer(s ItemPrinter[T]) {
+	p.stringer = s
 }
 
 func (p *Parser[T]) IsDone() bool {
 	return !p.HasCurr
 }
 
+// returns the range of items from TruncBefore inclusive to TruncAfter exclusive
+func (p *Parser[T]) truncate() []T {
+	lower := max(p.curr-p.TruncBefore, 0)
+	upper := min(p.curr+p.TruncAfter, len(p.items)-1)
+	return p.items[lower:upper]
+}
+
 func (p *Parser[T]) String() string {
-	return p.iter.String()
+	sb := &strings.Builder{}
+	for i, item := range p.truncate() {
+		sb.WriteString(p.stringer(item))
+		if i < len(p.items)-1 {
+			sb.WriteString(p.separator)
+		}
+	}
+	return sb.String()
 }
 
 func New[T any](items []T) *Parser[T] {
-	iter := iterator.New(items)
-	curr, hasCurr := iter.Next()
-	next, hasNext := iter.Peek()
-
-	return &Parser[T]{
-		iter:    iter,
-		Curr:    curr,
-		HasCurr: hasCurr,
-		Next:    next,
-		HasNext: hasNext,
+	ret := &Parser[T]{
+		curr:         -1,
+		items:        items,
+		WrapSelected: true,
+		TruncBefore:  5,
+		TruncAfter:   2,
+		stringer:     func(in T) string { return fmt.Sprintf("%v", in) },
+		separator:    ",",
 	}
+
+	ret.Advance()
+	return ret
 }
 
 func (p *Parser[T]) Index() int {
-	return p.iter.Index()
+	return p.curr
 }
 
 func (p *Parser[T]) Advance() {
-	curr, hasCurr := p.iter.Next()
-	next, hasNext := p.iter.Peek()
-	p.Curr = curr
-	p.HasCurr = hasCurr
-	p.Next = next
-	p.HasNext = hasNext
+	p.curr++
+	p.HasCurr = p.curr < len(p.items) && p.curr >= 0
+	p.HasNext = p.curr+1 < len(p.items) && p.curr+1 >= 0
+	if p.HasCurr {
+		p.Curr = p.items[p.curr]
+	}
+	if p.HasNext {
+		p.Next = p.items[p.curr+1]
+	}
 }

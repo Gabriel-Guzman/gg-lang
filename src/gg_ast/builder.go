@@ -6,7 +6,7 @@ import (
 	"gg-lang/src/token"
 )
 
-type astBuilder struct {
+type builder struct {
 	par *parser.Parser[token.Token]
 }
 
@@ -34,10 +34,10 @@ func parseBlockStatement(par *parser.Parser[token.Token]) (BlockStatement, error
 	return nil, ggErrs.Syntax("no closing brace for block statement\n%s", par.String())
 }
 
-func newAstBuilder(ins []token.Token) *astBuilder {
+func newAstBuilder(ins []token.Token) *builder {
 	par := parser.New(ins)
 
-	return &astBuilder{
+	return &builder{
 		par: par,
 	}
 }

@@ -79,7 +79,7 @@ func (fde *FunctionDeclExpression) Name() string {
 type IfElseStatement struct {
 	Condition      ValueExpression
 	Body           BlockStatement
-	ElseExpression *IfElseStatement // optional
+	ElseExpression Expression // optional
 }
 
 func (ife *IfElseStatement) Kind() ExpressionKind { return ExprIfElse }
@@ -124,37 +124,32 @@ func ExprString(e Expression, d int, sb *strings.Builder) {
 		sb.WriteString(ind(d) + s)
 	}
 	sb.WriteString("\n")
-	switch e.Kind() {
-	case ExprAssignment:
+
+	switch e.(type) {
+	case *AssignmentExpression:
 		val := e.(*AssignmentExpression)
 		w("assign of ")
 		ExprString(val.Value, d+1, sb)
 		sb.WriteString("\n")
 		w(" to")
 		ExprString(val.Target, d+1, sb)
-	case ExprBinary:
+	case *BinaryExpression:
 		val := e.(*BinaryExpression)
 		w("operation of ")
 		ExprString(val.Lhs, d+1, sb)
 		sb.WriteString("\n")
 		w(val.Op)
 		ExprString(val.Rhs, d+1, sb)
-	case ExprIntLiteral:
-		fallthrough
-	case ExprVariable:
-		fallthrough
-	case ExprStringLiteral:
-		fallthrough
-	case ExprBoolLiteral:
+	case *Identifier:
 		id := e.(*Identifier)
 		w("Ident " + id.idKind.String() + " " + id.Raw)
-	case ExprFunctionCall:
+	case *FunctionCallExpression:
 		val := e.(*FunctionCallExpression)
 		w("call to " + val.Id.Name())
 		for _, param := range val.Args {
 			ExprString(param, d+1, sb)
 		}
-	case ExprFuncDecl:
+	case *FunctionDeclExpression:
 		val := e.(*FunctionDeclExpression)
 		w("decl of " + val.Target.Name() + fmt.Sprintf("(%s)\n", strings.Join(val.Params, ", ")))
 		w(" to do")

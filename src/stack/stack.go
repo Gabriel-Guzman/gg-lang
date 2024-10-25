@@ -1,5 +1,6 @@
 package stack
 
+// a stack implementation using a singly-linked list.
 type Stack[T any] struct {
 	curr *elem[T]
 }

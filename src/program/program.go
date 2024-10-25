@@ -114,10 +114,8 @@ func (p *Program) Run(ast *gg_ast.Ast) error {
 	return nil
 }
 
-func (p *Program) runBlockStmtNewScope(block gg_ast.BlockStatement) error {
-	p.enterNewScope()
-	defer p.exitScope()
-
+// essentially the same as RunStmt.
+func (p *Program) runBlockStmt(block gg_ast.BlockStatement) error {
 	for _, stmt := range block {
 		err := p.RunStmt(stmt)
 		if err != nil {
@@ -127,30 +125,36 @@ func (p *Program) runBlockStmtNewScope(block gg_ast.BlockStatement) error {
 	return nil
 }
 
+// a shortcut runBlockStmt in a new scope.
+func (p *Program) runBlockStmtNewScope(block gg_ast.BlockStatement) error {
+	p.enterNewScope()
+	defer p.exitScope()
+	return p.runBlockStmt(block)
+}
+
 func (p *Program) RunStmt(expr gg_ast.Expression) error {
 	// dont execute anything if there's a return value right now
 	if p.returnValue != nil {
 		return nil
 	}
-	switch expr.Kind() {
-	case gg_ast.ExprReturn:
-		ret := expr.(*gg_ast.ReturnStatement)
-		val, err := p.evaluateValueExpr(ret.Value)
+	switch expr.(type) {
+	case *gg_ast.ReturnStatement:
+		val, err := p.evaluateValueExpr(expr.(*gg_ast.ReturnStatement).Value)
 		if err != nil {
 			return err
 		}
 		p.returnValue = val
-	case gg_ast.ExprBlock:
+	case gg_ast.BlockStatement:
 		block := expr.(gg_ast.BlockStatement)
 		err := p.runBlockStmtNewScope(block)
 		if err != nil {
 			return err
 		}
-	case gg_ast.ExprAssignment:
+	case *gg_ast.AssignmentExpression:
 		if err := p.evaluateAssignment(expr.(*gg_ast.AssignmentExpression)); err != nil {
 			return err
 		}
-	case gg_ast.ExprFuncDecl:
+	case *gg_ast.FunctionDeclExpression:
 		decl := expr.(*gg_ast.FunctionDeclExpression)
 		_, err := p.currentScope().declareVar(decl.Target.Raw, &variable.RuntimeValue{
 			Val: RuntimeFuncFromDecl(decl, p.currentScope()),
@@ -159,17 +163,16 @@ func (p *Program) RunStmt(expr gg_ast.Expression) error {
 		if err != nil {
 			return err
 		}
-	case gg_ast.ExprForLoop:
+	case *gg_ast.ForLoopExpression:
 		loop := expr.(*gg_ast.ForLoopExpression)
 		for {
 			val, err := p.evaluateValueExpr(loop.Condition)
 			if err != nil {
 				return err
 			}
-			if val.Typ != variable.Boolean {
+			if _, ok := val.Val.(bool); !ok {
 				return ggErrs.Runtime("loop condition must evaluate to bool\n%+v", expr)
 			}
-
 			if !val.Val.(bool) {
 				break
 			}
@@ -178,13 +181,13 @@ func (p *Program) RunStmt(expr gg_ast.Expression) error {
 				return err
 			}
 		}
-	case gg_ast.ExprIfElse:
+	case *gg_ast.IfElseStatement:
 		ifElse := expr.(*gg_ast.IfElseStatement)
 		err := p.execIfElse(ifElse)
 		if err != nil {
 			return err
 		}
-	case gg_ast.ExprFunctionCall:
+	case *gg_ast.FunctionCallExpression:
 		call := expr.(*gg_ast.FunctionCallExpression)
 		_, err := p.call(call)
 		if err != nil {
@@ -193,17 +196,16 @@ func (p *Program) RunStmt(expr gg_ast.Expression) error {
 	default:
 		return ggErrs.Crit("Invalid top-level expression: %s", expr.Kind().String())
 	}
-
 	return nil
 }
 
-func (p *Program) execIfElse(expr *gg_ast.IfElseStatement) error {
-	ifElse := expr
+func (p *Program) execIfElse(expr gg_ast.Expression) error {
+	ifElse := expr.(*gg_ast.IfElseStatement)
 	cond, err := p.evaluateValueExpr(ifElse.Condition)
 	if err != nil {
 		return err
 	}
-	if cond.Typ != variable.Boolean {
+	if _, ok := cond.Val.(bool); !ok {
 		return ggErrs.Runtime("if condition must evaluate to bool\n%+v", expr)
 	}
 	if cond.Val.(bool) {
@@ -225,8 +227,8 @@ func (p *Program) execIfElse(expr *gg_ast.IfElseStatement) error {
 func (p *Program) enterNewScope() {
 	ns := &Scope{
 		// NOTE: the current scope is the new scopes parent here.
-		// this will not always be the case, when a function decl captures a scope,
-		// it may have push a scope with a parent other than the current scope.
+		// this will not always be the case. when a function decl captures a scope,
+		// it may have pushed a scope with a parent other than the current scope.
 		Parent:    p.currentScope(),
 		variables: make(map[string]*variable.Variable),
 	}
