@@ -33,6 +33,15 @@ type BlockStatement []Expression
 func (bs BlockStatement) SetStatements(s []Expression) { copy(bs, s) }
 func (bs BlockStatement) Kind() ExpressionKind         { return ExprBlock }
 
+// -b
+type UnaryExpression struct {
+	Op  string
+	Rhs ValueExpression
+}
+
+func (be *UnaryExpression) Name() string         { return be.Op }
+func (be *UnaryExpression) Kind() ExpressionKind { return ExprUnary }
+
 // a + b
 type BinaryExpression struct {
 	Lhs ValueExpression

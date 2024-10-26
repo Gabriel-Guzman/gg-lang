@@ -1,20 +1,22 @@
 package program
 
 import (
-	"gg-lang/src/ggErrs"
+	"gg-lang/src/gg"
 	"gg-lang/src/gg_ast"
 	"gg-lang/src/variable"
 )
 
 func (p *Program) call(f *gg_ast.FunctionCallExpression) (*variable.RuntimeValue, error) {
+	// find the function
 	v := p.currentScope().findVariable(f.Name())
 	if v == nil {
-		return nil, ggErrs.Runtime("undefined function %s, evaluating\n%s", f.Id.Raw, gg_ast.NoBuilderExprString(f))
+		return nil, gg.Runtime("undefined function %s, evaluating\n%s", f.Id.Raw, gg_ast.NoBuilderExprString(f))
 	}
+
 	// check if callable
 	if _, ok := v.RuntimeValue.Val.(Func); !ok {
 		if _, ok := v.RuntimeValue.Val.(*RuntimeFunc); !ok {
-			return nil, ggErrs.Runtime("%s is not callable, evaluating\n%s", f.Id.Raw, gg_ast.NoBuilderExprString(f))
+			return nil, gg.Runtime("%s is not callable, evaluating\n%s", f.Id.Raw, gg_ast.NoBuilderExprString(f))
 		}
 	}
 
@@ -37,7 +39,7 @@ func (p *Program) call(f *gg_ast.FunctionCallExpression) (*variable.RuntimeValue
 	// set up func expression
 	runtimeFunc := v.RuntimeValue.Val.(*RuntimeFunc)
 	if len(runtimeFunc.Decl.Params) != len(f.Args) {
-		return nil, ggErrs.Runtime("param count mismatch on %s, evaluating\n%s", f.Id.Raw, gg_ast.NoBuilderExprString(f))
+		return nil, gg.Runtime("param count mismatch on %s, evaluating\n%s", f.Id.Raw, gg_ast.NoBuilderExprString(f))
 	}
 
 	// build variables for new scope

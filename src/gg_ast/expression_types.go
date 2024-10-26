@@ -9,6 +9,7 @@ const (
 		ValueExpression implementing kinds
 	*/
 	ExprBinary ExpressionKind = iota
+	ExprUnary
 	ExprIntLiteral
 	ExprBoolLiteral
 	ExprVariable

@@ -1,7 +1,7 @@
 package gg_ast
 
 import (
-	"gg-lang/src/ggErrs"
+	"gg-lang/src/gg"
 	"gg-lang/src/parser"
 	"gg-lang/src/token"
 )
@@ -12,7 +12,7 @@ type builder struct {
 
 func parseBlockStatement(par *parser.Parser[token.Token]) (BlockStatement, error) {
 	if !advanceIfCurrIs(par, token.OpenBrace) {
-		return nil, ggErrs.Syntax("expected opening brace for block statement\n%s", par.String())
+		return nil, gg.Syntax("expected opening brace for block statement\n%s", par.String())
 	}
 	var expressions []Expression
 	for par.HasCurr {
@@ -21,9 +21,6 @@ func parseBlockStatement(par *parser.Parser[token.Token]) (BlockStatement, error
 		}
 
 		stmt, err := parseStatement(par)
-		//if _, ok := stmt.(*FunctionDeclExpression); ok {
-		//	return nil, ggErrs.Runtime("function declaration inside block statement is not allowed\n%s", par.String())
-		//}
 		if err != nil {
 			return nil, err
 		}
@@ -31,7 +28,7 @@ func parseBlockStatement(par *parser.Parser[token.Token]) (BlockStatement, error
 		expressions = append(expressions, stmt)
 	}
 
-	return nil, ggErrs.Syntax("no closing brace for block statement\n%s", par.String())
+	return nil, gg.Syntax("no closing brace for block statement\n%s", par.String())
 }
 
 func newAstBuilder(ins []token.Token) *builder {

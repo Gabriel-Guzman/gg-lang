@@ -26,6 +26,10 @@ func (m *minusInts) ResultType() variable.VarType {
 	return variable.Integer
 }
 
+func (m *minusInts) UnaryEvaluate(right interface{}) interface{} {
+	return -right.(int)
+}
+
 // int * int
 type mulInts struct{}
 

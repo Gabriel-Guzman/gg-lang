@@ -1,7 +1,7 @@
 package token
 
 import (
-	"gg-lang/src/ggErrs"
+	"gg-lang/src/gg"
 	"gg-lang/src/parser"
 	uni "unicode"
 )
@@ -55,7 +55,7 @@ func tokenize(par *parser.Parser[rune]) ([]Token, error) {
 			}
 			a(idTok)
 		default:
-			return nil, ggErrs.Crit("unexpected character\n%s", par.String())
+			return nil, gg.Crit("unexpected character\n%s", par.String())
 		}
 	}
 
@@ -96,11 +96,11 @@ func (t *tkzr) parseReservedSingleRuneTok(tokType Type) Token {
 func parseIdentifier(p *parser.Parser[rune]) (Token, error) {
 	start := p.Index()
 	if !p.HasCurr {
-		return Token{}, ggErrs.Crit("identifier parser called with nothing in parser\n%s", p.String())
+		return Token{}, gg.Crit("identifier parser called with nothing in parser\n%s", p.String())
 	}
 
 	if !uni.IsLetter(p.Curr) {
-		return Token{}, ggErrs.Crit("expected letter, got %s\n%s", string(p.Curr), p.String())
+		return Token{}, gg.Crit("expected letter, got %s\n%s", string(p.Curr), p.String())
 	}
 
 	id := ""
@@ -115,7 +115,7 @@ func parseIdentifier(p *parser.Parser[rune]) (Token, error) {
 	}
 
 	if id == "" {
-		return Token{}, ggErrs.Crit("could not parse identifier\n%s", p.String())
+		return Token{}, gg.Crit("could not parse identifier\n%s", p.String())
 	}
 
 	if isReserved(id) {
@@ -139,7 +139,7 @@ func parseIdentifier(p *parser.Parser[rune]) (Token, error) {
 func parseNumLiteral(p *parser.Parser[rune]) (Token, error) {
 	start := p.Index()
 	if !p.HasCurr {
-		return Token{}, ggErrs.Crit("number parser called with nothing in parser\n%s", p.String())
+		return Token{}, gg.Crit("number parser called with nothing in parser\n%s", p.String())
 	}
 
 	num := ""
@@ -155,7 +155,7 @@ func parseNumLiteral(p *parser.Parser[rune]) (Token, error) {
 	}
 
 	if num == "" {
-		return Token{}, ggErrs.Crit("could not parse number\n%s", p.String())
+		return Token{}, gg.Crit("could not parse number\n%s", p.String())
 	}
 
 	return Token{
@@ -169,7 +169,7 @@ func parseNumLiteral(p *parser.Parser[rune]) (Token, error) {
 func parseOperator(p *parser.Parser[rune]) (Token, error) {
 	start := p.Index()
 	if !p.HasCurr {
-		return Token{}, ggErrs.Crit("operator parser called with nothing in parser\n%s", p.String())
+		return Token{}, gg.Crit("operator parser called with nothing in parser\n%s", p.String())
 	}
 	op := ""
 
@@ -190,13 +190,13 @@ func parseOperator(p *parser.Parser[rune]) (Token, error) {
 	}
 
 	if op == "" {
-		return Token{}, ggErrs.Crit("could not parse operator\n%s", p.String())
+		return Token{}, gg.Crit("could not parse operator\n%s", p.String())
 	}
 
 	if isReserved(op) {
 		realOp := lookup(op)
 		if !realOp.IsOperator() {
-			return Token{}, ggErrs.Runtime("unknown operator \n%s", p.String())
+			return Token{}, gg.Runtime("unknown operator \n%s", p.String())
 		}
 
 		return Token{
@@ -207,15 +207,15 @@ func parseOperator(p *parser.Parser[rune]) (Token, error) {
 		}, nil
 	}
 
-	return Token{}, ggErrs.Runtime("unknown operator \n%s", p.String())
+	return Token{}, gg.Runtime("unknown operator \n%s", p.String())
 }
 
 func parseStringLiteral(p *parser.Parser[rune]) (Token, error) {
 	if !p.HasCurr {
-		return Token{}, ggErrs.Crit("string literal parser called with nothing in parser\n%s", p.String())
+		return Token{}, gg.Crit("string literal parser called with nothing in parser\n%s", p.String())
 	}
 	if string(p.Curr) != reservedTokens[Quote] {
-		return Token{}, ggErrs.Crit("string literal parser called on non-quote\n%s", p.String())
+		return Token{}, gg.Crit("string literal parser called on non-quote\n%s", p.String())
 	}
 
 	p.Advance() // consume opening quote
@@ -225,7 +225,7 @@ func parseStringLiteral(p *parser.Parser[rune]) (Token, error) {
 
 	for {
 		if !p.HasCurr {
-			return Token{}, ggErrs.Runtime("unterminated string literal\n%s", p.String())
+			return Token{}, gg.Runtime("unterminated string literal\n%s", p.String())
 		}
 		if string(p.Curr) == reservedTokens[Quote] {
 			p.Advance() // consume closing quote

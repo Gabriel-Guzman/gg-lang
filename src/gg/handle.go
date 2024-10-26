@@ -1,4 +1,4 @@
-package ggErrs
+package gg
 
 import (
 	"errors"

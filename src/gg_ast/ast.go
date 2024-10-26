@@ -1,7 +1,6 @@
 package gg_ast
 
 import (
-	"gg-lang/src/token"
 	"strings"
 )
 
@@ -15,8 +14,4 @@ func (a *Ast) String() string {
 		ExprString(expr, 0, &sb)
 	}
 	return sb.String()
-}
-
-func tokStringer(t token.Token) string {
-	return t.Str
 }

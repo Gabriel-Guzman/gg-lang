@@ -1,7 +1,7 @@
 package variable
 
 import (
-	"gg-lang/src/ggErrs"
+	"gg-lang/src/gg"
 	"strconv"
 )
 
@@ -18,7 +18,7 @@ func CoerceTo(val interface{}, targetType VarType) (interface{}, error) {
 	case bool:
 		return CoerceFromBool(val.(bool), targetType)
 	default:
-		return nil, ggErrs.Runtime("failed to coerce value of type %T to %s", val, targetType.String())
+		return nil, gg.Runtime("failed to coerce value of type %T to %s", val, targetType.String())
 	}
 }
 func CoerceFromBool(val bool, targetType VarType) (interface{}, error) {
@@ -29,7 +29,7 @@ func CoerceFromBool(val bool, targetType VarType) (interface{}, error) {
 	case Boolean:
 		return val, nil
 	default:
-		return nil, ggErrs.Runtime("failed to coerce bool %d to %s", val, targetType.String())
+		return nil, gg.Runtime("failed to coerce bool %d to %s", val, targetType.String())
 	}
 }
 func CoerceFromInt(val int, targetType VarType) (interface{}, error) {
@@ -40,6 +40,6 @@ func CoerceFromInt(val int, targetType VarType) (interface{}, error) {
 	case Integer:
 		return val, nil
 	default:
-		return nil, ggErrs.Runtime("failed to coerce integer %d to %s", val, targetType.String())
+		return nil, gg.Runtime("failed to coerce integer %d to %s", val, targetType.String())
 	}
 }

@@ -1,7 +1,7 @@
 package program
 
 import (
-	"gg-lang/src/ggErrs"
+	"gg-lang/src/gg"
 	"gg-lang/src/variable"
 )
 
@@ -18,7 +18,7 @@ func (l *Length) Name() string {
 
 func (l *Length) Call(args ...*variable.RuntimeValue) (*variable.RuntimeValue, error) {
 	if len(args) != 1 {
-		return nil, ggErrs.Runtime("len expects one argument")
+		return nil, gg.Runtime("len expects one argument")
 	}
 
 	switch args[0].Typ {
@@ -28,6 +28,6 @@ func (l *Length) Call(args ...*variable.RuntimeValue) (*variable.RuntimeValue, e
 			Typ: variable.Integer,
 		}, nil
 	default:
-		return nil, ggErrs.Runtime("len argument must be a string, got %s", args[0].Typ.String())
+		return nil, gg.Runtime("len argument must be a string, got %s", args[0].Typ.String())
 	}
 }

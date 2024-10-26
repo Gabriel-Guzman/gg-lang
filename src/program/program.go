@@ -2,7 +2,7 @@ package program
 
 import (
 	"fmt"
-	"gg-lang/src/ggErrs"
+	"gg-lang/src/gg"
 	"gg-lang/src/gg_ast"
 	"gg-lang/src/operators"
 	"gg-lang/src/stack"
@@ -22,7 +22,7 @@ type Scope struct {
 func (s *Scope) declareVar(name string, value *variable.RuntimeValue) (*variable.Variable, error) {
 	_, ok := s.variables[name]
 	if ok {
-		return nil, ggErrs.Runtime("variable '%s' already declared in this scope\n%v", name, s)
+		return nil, gg.Runtime("variable '%s' already declared in this scope\n%v", name, s)
 	}
 	v := &variable.Variable{
 		Name:         name,
@@ -91,7 +91,7 @@ func New() *Program {
 // a shortcut for executing a string of code
 func (p *Program) RunString(code string) error {
 	ast, err := gg_ast.BuildFromString(code)
-	ggErrs.Handle(err)
+	gg.Handle(err)
 	if err != nil {
 		return err
 	}
@@ -157,7 +157,7 @@ func (p *Program) RunStmt(expr gg_ast.Expression) error {
 	case *gg_ast.FunctionDeclExpression:
 		decl := expr.(*gg_ast.FunctionDeclExpression)
 		_, err := p.currentScope().declareVar(decl.Target.Raw, &variable.RuntimeValue{
-			Val: RuntimeFuncFromDecl(decl, p.currentScope()),
+			Val: NewRuntimeFunc(decl, p.currentScope()),
 			Typ: variable.Function,
 		})
 		if err != nil {
@@ -171,7 +171,7 @@ func (p *Program) RunStmt(expr gg_ast.Expression) error {
 				return err
 			}
 			if _, ok := val.Val.(bool); !ok {
-				return ggErrs.Runtime("loop condition must evaluate to bool\n%+v", expr)
+				return gg.Runtime("loop condition must evaluate to bool\n%+v", expr)
 			}
 			if !val.Val.(bool) {
 				break
@@ -194,7 +194,7 @@ func (p *Program) RunStmt(expr gg_ast.Expression) error {
 			return err
 		}
 	default:
-		return ggErrs.Crit("Invalid top-level expression: %s", expr.Kind().String())
+		return gg.Crit("Invalid top-level expression: %s", expr.Kind().String())
 	}
 	return nil
 }
@@ -206,7 +206,7 @@ func (p *Program) execIfElse(expr gg_ast.Expression) error {
 		return err
 	}
 	if _, ok := cond.Val.(bool); !ok {
-		return ggErrs.Runtime("if condition must evaluate to bool\n%+v", expr)
+		return gg.Runtime("if condition must evaluate to bool\n%+v", expr)
 	}
 	if cond.Val.(bool) {
 		err = p.runBlockStmtNewScope(ifElse.Body)
@@ -270,11 +270,11 @@ func (p *Program) findVariable(name string) *variable.Variable {
 
 func (p *Program) evaluateAssignment(expr *gg_ast.AssignmentExpression) error {
 	if expr.Target.Kind() != gg_ast.ExprVariable {
-		return ggErrs.Runtime("invalid assignment target: %s", expr.Target.Raw)
+		return gg.Runtime("invalid assignment target: %s", expr.Target.Raw)
 	}
 
 	if expr.Value.Kind() > gg_ast.SentinelValueExpression {
-		return ggErrs.Runtime("cannot make value for %v", expr)
+		return gg.Runtime("cannot make value for %v", expr)
 	}
 
 	val, err := p.evaluateValueExpr(expr.Value)

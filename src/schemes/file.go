@@ -3,7 +3,7 @@ package schemes
 import (
 	"encoding/json"
 	"fmt"
-	"gg-lang/src/ggErrs"
+	"gg-lang/src/gg"
 	"gg-lang/src/gg_ast"
 	"gg-lang/src/program"
 	"gg-lang/src/token"
@@ -27,29 +27,29 @@ func Exec(filename string) {
 
 	// tokenize the input manually so we can save the tokens to a file for debugging
 	stmts, err := token.TokenizeRunes([]rune(string(out)))
-	ggErrs.Handle(err)
+	gg.Handle(err)
 
 	stmtsJson, err := json.MarshalIndent(stmts, "", "    ")
-	ggErrs.Handle(err)
+	gg.Handle(err)
 
 	err = os.WriteFile("out/stmts.json", stmtsJson, 0644)
-	ggErrs.Handle(err)
+	gg.Handle(err)
 
 	ast, err := gg_ast.BuildFromTokens(stmts)
-	ggErrs.Handle(err)
+	gg.Handle(err)
 
 	tree, err := json.MarshalIndent(ast, "", "    ")
-	ggErrs.Handle(err)
+	gg.Handle(err)
 
 	err = os.WriteFile("out/ast.json", tree, 0644)
-	ggErrs.Handle(err)
+	gg.Handle(err)
 
 	fmt.Println("AST saved to out/ast.json")
 
 	fmt.Println("Running program...")
 	sess := program.New()
 	err = sess.Run(ast)
-	ggErrs.Handle(err)
+	gg.Handle(err)
 
 	fmt.Println(makeTimestamp()-t, "ms")
 }

@@ -1,8 +1,9 @@
 package program
 
 import (
-	"gg-lang/src/ggErrs"
+	"gg-lang/src/gg"
 	"gg-lang/src/gg_ast"
+	"gg-lang/src/operators"
 	"gg-lang/src/variable"
 	"strconv"
 )
@@ -15,12 +16,12 @@ func (p *Program) evaluateValueExpr(expr gg_ast.ValueExpression) (*variable.Runt
 		if v != nil {
 			return v.RuntimeValue, nil
 		}
-		return nil, ggErrs.Runtime("undefined variable: %s", name)
+		return nil, gg.Runtime("undefined variable: %s", name)
 	case gg_ast.ExprIntLiteral:
 		name := expr.(*gg_ast.Identifier).Name()
 		intVal, err := strconv.Atoi(name)
 		if err != nil {
-			return nil, ggErrs.Crit("unable to evaluate int literal: %s", err.Error())
+			return nil, gg.Crit("unable to evaluate int literal: %s", err.Error())
 		}
 		return &variable.RuntimeValue{
 			Val: intVal,
@@ -30,7 +31,7 @@ func (p *Program) evaluateValueExpr(expr gg_ast.ValueExpression) (*variable.Runt
 		name := expr.(*gg_ast.Identifier).Name()
 		boolVal, err := strconv.ParseBool(name)
 		if err != nil {
-			return nil, ggErrs.Crit("unable to evaluate bool literal: %s", err.Error())
+			return nil, gg.Crit("unable to evaluate bool literal: %s", err.Error())
 		}
 		return &variable.RuntimeValue{
 			Val: boolVal,
@@ -54,9 +55,9 @@ func (p *Program) evaluateValueExpr(expr gg_ast.ValueExpression) (*variable.Runt
 			return nil, err
 		}
 
-		op, exists := p.opMap.Get(binExp.Op, left.Typ, right.Typ)
+		op, exists := operators.Get(binExp.Op, left.Typ, right.Typ)
 		if !exists {
-			return nil, ggErrs.Runtime(
+			return nil, gg.Runtime(
 				"evaluateValueExpr: op %s not supported between types %s and %s\nevaluating: %s", binExp.Op, left.Typ.String(), right.Typ.String(), gg_ast.NoBuilderExprString(expr))
 		}
 
@@ -73,10 +74,10 @@ func (p *Program) evaluateValueExpr(expr gg_ast.ValueExpression) (*variable.Runt
 	case gg_ast.ExprFuncDecl:
 		decl := expr.(*gg_ast.FunctionDeclExpression)
 		return &variable.RuntimeValue{
-			Val: RuntimeFuncFromDecl(decl, p.currentScope()),
+			Val: NewRuntimeFunc(decl, p.currentScope()),
 			Typ: variable.Function,
 		}, nil
 	default:
-		return nil, ggErrs.Crit("evaluateValueExpr: invalid expression type: %v", expr)
+		return nil, gg.Crit("evaluateValueExpr: invalid expression type: %v", expr)
 	}
 }

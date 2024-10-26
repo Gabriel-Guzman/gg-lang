@@ -8,7 +8,7 @@ type RuntimeFunc struct {
 	CapturedScope *Scope
 }
 
-func RuntimeFuncFromDecl(decl *gg_ast.FunctionDeclExpression, scope *Scope) *RuntimeFunc {
+func NewRuntimeFunc(decl *gg_ast.FunctionDeclExpression, scope *Scope) *RuntimeFunc {
 	return &RuntimeFunc{
 		Name:          decl.Target.Name(),
 		Decl:          decl,

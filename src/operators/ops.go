@@ -11,6 +11,11 @@ type Operator interface {
 	ResultType() variable.VarType
 }
 
+type UnaryOperator interface {
+	Operator
+	UnaryEvaluate(right interface{}) interface{}
+}
+
 type OpMap struct {
 	ops map[string]Operator
 }
@@ -19,11 +24,34 @@ func opKey(name string, left, right variable.VarType) string {
 	return fmt.Sprintf("%s_%d_%d", name, left, right)
 }
 
+func unaryOpKey(name string, right variable.VarType) string {
+	return fmt.Sprintf("%s_%d", name, right)
+}
+
+var defaultOpMap map[string]Operator
+
+func init() {
+	defaultOpMap = Default().ops
+}
+
+func Get(name string, left, right variable.VarType) (Operator, bool) {
+	ops := defaultOpMap
+	op, ok := ops[opKey(name, left, right)]
+	return op, ok
+}
+
+func GetUnary(name string, right variable.VarType) (UnaryOperator, bool) {
+	ops := defaultOpMap
+	op, ok := ops[unaryOpKey(name, right)]
+	uop, ok := op.(UnaryOperator)
+	return uop, ok
+}
+
 func (o *OpMap) Get(name string, left, right variable.VarType) (Operator, bool) {
 	op, ok := o.ops[opKey(name, left, right)]
 	return op, ok
 }
-func (o *OpMap) Set(name string, left, right variable.VarType, op Operator) {
+func (o *OpMap) set(name string, left, right variable.VarType, op Operator) {
 	o.ops[opKey(name, left, right)] = op
 }
 func (o *OpMap) String() string {
@@ -39,34 +67,34 @@ func Default() *OpMap {
 		ops: make(map[string]Operator),
 	}
 
-	opm.Set("+", variable.Integer, variable.Integer, &plusInts{})
-	opm.Set("-", variable.Integer, variable.Integer, &minusInts{})
-	opm.Set("*", variable.Integer, variable.Integer, &mulInts{})
-	opm.Set("/", variable.Integer, variable.Integer, &divInts{})
+	opm.set("+", variable.Integer, variable.Integer, &plusInts{})
+	opm.set("-", variable.Integer, variable.Integer, &minusInts{})
+	opm.set("*", variable.Integer, variable.Integer, &mulInts{})
+	opm.set("/", variable.Integer, variable.Integer, &divInts{})
 
-	opm.Set("<", variable.Integer, variable.Integer, &lessThanInts{})
-	opm.Set(">", variable.Integer, variable.Integer, &greaterThanInts{})
-	opm.Set("<=", variable.Integer, variable.Integer, &lessThanEqualInts{})
-	opm.Set(">=", variable.Integer, variable.Integer, &greaterThanEqualInts{})
-	opm.Set("!=", variable.Integer, variable.Integer, &genNotEquals{})
-	opm.Set("==", variable.Integer, variable.Integer, &genEquals{})
+	opm.set("<", variable.Integer, variable.Integer, &lessThanInts{})
+	opm.set(">", variable.Integer, variable.Integer, &greaterThanInts{})
+	opm.set("<=", variable.Integer, variable.Integer, &lessThanEqualInts{})
+	opm.set(">=", variable.Integer, variable.Integer, &greaterThanEqualInts{})
+	opm.set("!=", variable.Integer, variable.Integer, &genNotEquals{})
+	opm.set("==", variable.Integer, variable.Integer, &genEquals{})
 
-	opm.Set("+", variable.String, variable.String, &plusStrings{})
-	opm.Set("+", variable.Integer, variable.String, &coercedPlusString{})
-	opm.Set("+", variable.String, variable.Integer, &stringPlusCoerced{})
-	opm.Set("+", variable.Boolean, variable.String, &coercedPlusString{})
-	opm.Set("+", variable.String, variable.Boolean, &stringPlusCoerced{})
+	opm.set("+", variable.String, variable.String, &plusStrings{})
+	opm.set("+", variable.Integer, variable.String, &coercedPlusString{})
+	opm.set("+", variable.String, variable.Integer, &stringPlusCoerced{})
+	opm.set("+", variable.Boolean, variable.String, &coercedPlusString{})
+	opm.set("+", variable.String, variable.Boolean, &stringPlusCoerced{})
 
-	opm.Set("==", variable.Boolean, variable.Boolean, &equalsBools{})
-	opm.Set("!=", variable.Boolean, variable.Boolean, &notEqualsBools{})
-	opm.Set("&&", variable.Boolean, variable.Boolean, &andBools{})
-	opm.Set("||", variable.Boolean, variable.Boolean, &orBools{})
+	opm.set("==", variable.Boolean, variable.Boolean, &equalsBools{})
+	opm.set("!=", variable.Boolean, variable.Boolean, &notEqualsBools{})
+	opm.set("&&", variable.Boolean, variable.Boolean, &andBools{})
+	opm.set("||", variable.Boolean, variable.Boolean, &orBools{})
 
-	opm.Set("==", variable.String, variable.String, &genEquals{})
-	opm.Set("!=", variable.String, variable.String, &genNotEquals{})
+	opm.set("==", variable.String, variable.String, &genEquals{})
+	opm.set("!=", variable.String, variable.String, &genNotEquals{})
 
-	opm.Set("==", variable.Void, variable.Void, &equalsAlwaysTrue{})
-	opm.Set("!=", variable.Void, variable.Void, &equalsAlwaysFalse{})
+	opm.set("==", variable.Void, variable.Void, &equalsAlwaysTrue{})
+	opm.set("!=", variable.Void, variable.Void, &equalsAlwaysFalse{})
 	return opm
 }
 

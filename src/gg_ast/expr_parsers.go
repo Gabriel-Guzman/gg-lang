@@ -1,7 +1,7 @@
 package gg_ast
 
 import (
-	"gg-lang/src/ggErrs"
+	"gg-lang/src/gg"
 	"gg-lang/src/operators"
 	"gg-lang/src/parser"
 	"gg-lang/src/token"
@@ -19,9 +19,11 @@ pointing to the first token in the expression.
 After a successful parse, the parser should be pointing to the token after the expression
 */
 
+type tokenParser = *parser.Parser[token.Token]
+
 // a statement is a function call, declaration, assignment expression, or a for loop expression
 // it is up to the builder to disallow these expressions if it's not parsing the top level
-func parseStatement(p *parser.Parser[token.Token]) (Expression, error) {
+func parseStatement(p tokenParser) (Expression, error) {
 	// first expression should be an identifier, a reserved keyword, or a value expression
 	// check reserved keywords first
 	if p.Curr.TokenType == token.Function {
@@ -56,7 +58,7 @@ func parseStatement(p *parser.Parser[token.Token]) (Expression, error) {
 		return nil, err
 	}
 	if !advanceIfCurrIs(p, token.Term) {
-		return nil, ggErrs.Syntax("expected ; after function call\n%s", p.String())
+		return nil, gg.Syntax("expected ; after function call\n%s", p.String())
 	}
 	return expr, nil
 }
@@ -69,21 +71,21 @@ This will almost always be the token right after the first identifier in the exp
 i.e. the "(" in "funCall();" or the "=" in "x = 1 + 2;"
 After a successful parse, the parser should be pointing to the token after the expression
 */
-func parseAssignmentExpr(target *Identifier, p *parser.Parser[token.Token]) (*AssignmentExpression, error) {
+func parseAssignmentExpr(target *Identifier, p tokenParser) (*AssignmentExpression, error) {
 	expr, err := parseValueExpr(p)
 	if err != nil {
 		return nil, err
 	}
 	if !advanceIfCurrIs(p, token.Term) {
-		return nil, ggErrs.Syntax("expected ; after assignment expression\n%s", p.String())
+		return nil, gg.Syntax("expected ; after assignment expression\n%s", p.String())
 	}
 
 	return &AssignmentExpression{Target: target, Value: expr}, nil
 }
 
-func parseForLoopExpr(p *parser.Parser[token.Token]) (*ForLoopExpression, error) {
+func parseForLoopExpr(p tokenParser) (*ForLoopExpression, error) {
 	if !advanceIfCurrIs(p, token.For) { // eat the for keyword
-		return nil, ggErrs.Crit("expected 'for' keyword in expression parser\n%s", p.String())
+		return nil, gg.Crit("expected 'for' keyword in expression parser\n%s", p.String())
 	}
 
 	condition, err := parseValueExpr(p)
@@ -98,9 +100,9 @@ func parseForLoopExpr(p *parser.Parser[token.Token]) (*ForLoopExpression, error)
 	return &ForLoopExpression{Condition: condition, Body: body}, nil
 }
 
-func parseIfElseExpr(p *parser.Parser[token.Token]) (*IfElseStatement, error) {
+func parseIfElseExpr(p tokenParser) (*IfElseStatement, error) {
 	if !advanceIfCurrIs(p, token.If) { // eat the if keyword
-		return nil, ggErrs.Crit("expected 'if' keyword in expression parser\n%s", p.String())
+		return nil, gg.Crit("expected 'if' keyword in expression parser\n%s", p.String())
 	}
 	res := &IfElseStatement{}
 	condition, err := parseValueExpr(p)
@@ -134,9 +136,9 @@ func parseIfElseExpr(p *parser.Parser[token.Token]) (*IfElseStatement, error) {
 	return res, nil
 }
 
-func parseReturnExpr(p *parser.Parser[token.Token]) (*ReturnStatement, error) {
+func parseReturnExpr(p tokenParser) (*ReturnStatement, error) {
 	if !advanceIfCurrIs(p, token.Return) { // eat the return keyword
-		return nil, ggErrs.Crit("expected 'return' keyword in expression parser\n%s", p.String())
+		return nil, gg.Crit("expected 'return' keyword in expression parser\n%s", p.String())
 	}
 
 	expr, err := parseValueExpr(p)
@@ -145,13 +147,13 @@ func parseReturnExpr(p *parser.Parser[token.Token]) (*ReturnStatement, error) {
 	}
 
 	if !advanceIfCurrIs(p, token.Term) {
-		return nil, ggErrs.Syntax("expected ; after return expression\n%s", p.String())
+		return nil, gg.Syntax("expected ; after return expression\n%s", p.String())
 	}
 
 	return &ReturnStatement{Value: expr}, nil
 }
 
-func parseFuncDecl(p *parser.Parser[token.Token]) (*FunctionDeclExpression, error) {
+func parseFuncDecl(p tokenParser) (*FunctionDeclExpression, error) {
 	p.Advance() // eat the function keyword
 
 	id, err := parseIdentifier(p)
@@ -160,13 +162,13 @@ func parseFuncDecl(p *parser.Parser[token.Token]) (*FunctionDeclExpression, erro
 	}
 
 	if !advanceIfCurrIs(p, token.OpenParen) {
-		return nil, ggErrs.Runtime("expected '(' after function name\n%s", p.String())
+		return nil, gg.Runtime("expected '(' after function name\n%s", p.String())
 	}
 
 	var params []string
 	for {
 		if !p.HasCurr {
-			return nil, ggErrs.Runtime("Unexpected end of param list\n%s", p.String())
+			return nil, gg.Runtime("Unexpected end of param list\n%s", p.String())
 		}
 		param := p.Curr
 		if param.TokenType == token.CloseParen {
@@ -178,7 +180,7 @@ func parseFuncDecl(p *parser.Parser[token.Token]) (*FunctionDeclExpression, erro
 			continue
 		}
 		if param.TokenType != token.Ident {
-			return nil, ggErrs.Runtime("Unexpected token\n%s", p.String())
+			return nil, gg.Runtime("Unexpected token\n%s", p.String())
 		}
 
 		params = append(params, param.Str)
@@ -197,7 +199,7 @@ func parseFuncDecl(p *parser.Parser[token.Token]) (*FunctionDeclExpression, erro
 	}, nil
 }
 
-func parseIdentifier(p *parser.Parser[token.Token]) (*Identifier, error) {
+func parseIdentifier(p tokenParser) (*Identifier, error) {
 	t := p.Curr
 	var ik IdExprKind
 	switch t.TokenType {
@@ -212,16 +214,16 @@ func parseIdentifier(p *parser.Parser[token.Token]) (*Identifier, error) {
 	case token.FalseLiteral:
 		ik = IdExprBool
 	default:
-		return nil, ggErrs.Runtime("invalid identifier %s", t.Str)
+		return nil, gg.Runtime("invalid identifier %s", t.Str)
 	}
 	p.Advance()
 	return &Identifier{Raw: t.Str, idKind: ik}, nil
 }
 
 // returns a primary expression or a binary expression
-func parseValueExpr(p *parser.Parser[token.Token]) (ValueExpression, error) {
+func parseValueExpr(p tokenParser) (ValueExpression, error) {
 	if !p.HasCurr {
-		return nil, ggErrs.Runtime("unexpected end of expression\n%s", p.String())
+		return nil, gg.Runtime("unexpected end of expression\n%s", p.String())
 	}
 
 	// build initial binary tree
@@ -280,9 +282,9 @@ func parseValueExpr(p *parser.Parser[token.Token]) (ValueExpression, error) {
 }
 
 // A primary expression is either an identifier, a literal, a function call, a unary binary expression, or a function declaration
-func parsePrimaryExpr(p *parser.Parser[token.Token]) (ValueExpression, error) {
+func parsePrimaryExpr(p tokenParser) (ValueExpression, error) {
 	if !p.HasCurr {
-		return nil, ggErrs.Runtime("unexpected end of expression\n%s", p.String())
+		return nil, gg.Runtime("unexpected end of expression\n%s", p.String())
 	}
 
 	// unary operators
@@ -320,9 +322,9 @@ func parsePrimaryExpr(p *parser.Parser[token.Token]) (ValueExpression, error) {
 
 }
 
-func parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (ValueExpression, error) {
+func parseFuncCallExpr(id *Identifier, p tokenParser) (ValueExpression, error) {
 	if !advanceIfCurrIs(p, token.OpenParen) {
-		return nil, ggErrs.Runtime("expected '(' after function name\n%s", p.String())
+		return nil, gg.Runtime("expected '(' after function name\n%s", p.String())
 	}
 	if p.Curr.TokenType == token.CloseParen {
 		p.Advance() // consume the ')'
@@ -332,7 +334,7 @@ func parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (ValueExpr
 	var args []ValueExpression
 	for {
 		if !p.HasCurr {
-			return nil, ggErrs.Runtime("Unexpected end of arg list\n%s", p.String())
+			return nil, gg.Runtime("Unexpected end of arg list\n%s", p.String())
 		}
 
 		expr, err := parseValueExpr(p)
@@ -345,7 +347,7 @@ func parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (ValueExpr
 			break
 		}
 		if !advanceIfCurrIs(p, token.Comma) {
-			return nil, ggErrs.Runtime("expected ',' or ')' after argument\n%s", p.String())
+			return nil, gg.Runtime("expected ',' or ')' after argument\n%s", p.String())
 		}
 	}
 
@@ -356,11 +358,6 @@ func parseFuncCallExpr(id *Identifier, p *parser.Parser[token.Token]) (ValueExpr
 }
 
 // Advances the parser if the current token matches the given token type
-func advanceIfCurrIs(p *parser.Parser[token.Token], tt token.Type) bool {
-	if p.HasCurr && p.Curr.TokenType == tt {
-		p.Advance()
-		return true
-	}
-
-	return false
+func advanceIfCurrIs(p tokenParser, tt token.Type) bool {
+	return p.AdvanceIf(func(t token.Token) bool { return t.TokenType == tt })
 }

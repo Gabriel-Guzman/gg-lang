@@ -84,3 +84,12 @@ func (p *Parser[T]) Advance() {
 		p.Next = p.items[p.curr+1]
 	}
 }
+
+// advances the parser if the predicate returns true
+func (p *Parser[T]) AdvanceIf(pred func(T) bool) bool {
+	if pred(p.Curr) {
+		p.Advance()
+		return true
+	}
+	return false
+}
