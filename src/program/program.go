@@ -156,7 +156,7 @@ func (p *Program) RunStmt(expr gg_ast.Expression) error {
 		}
 	case *gg_ast.FunctionDeclExpression:
 		decl := expr.(*gg_ast.FunctionDeclExpression)
-		_, err := p.currentScope().declareVar(decl.Target.Raw, &variable.RuntimeValue{
+		_, err := p.currentScope().declareVar(decl.Target.Tok.Symbol, &variable.RuntimeValue{
 			Val: NewRuntimeFunc(decl, p.currentScope()),
 			Typ: variable.Function,
 		})
@@ -215,7 +215,7 @@ func (p *Program) execIfElse(expr gg_ast.Expression) error {
 		}
 	} else {
 		if ifElse.ElseExpression != nil {
-			err = p.execIfElse(ifElse.ElseExpression)
+			err = p.RunStmt(ifElse.ElseExpression)
 			if err != nil {
 				return err
 			}
@@ -270,7 +270,7 @@ func (p *Program) findVariable(name string) *variable.Variable {
 
 func (p *Program) evaluateAssignment(expr *gg_ast.AssignmentExpression) error {
 	if expr.Target.Kind() != gg_ast.ExprVariable {
-		return gg.Runtime("invalid assignment target: %s", expr.Target.Raw)
+		return gg.Runtime("invalid assignment target: %s", expr.Target.Tok.Symbol)
 	}
 
 	if expr.Value.Kind() > gg_ast.SentinelValueExpression {
@@ -288,6 +288,6 @@ func (p *Program) evaluateAssignment(expr *gg_ast.AssignmentExpression) error {
 		return nil
 	}
 
-	_, err = p.currentScope().softDeclareVar(expr.Target.Raw, val)
+	_, err = p.currentScope().softDeclareVar(expr.Target.Tok.Symbol, val)
 	return err
 }

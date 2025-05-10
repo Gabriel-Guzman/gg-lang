@@ -55,7 +55,7 @@ func (p *Program) evaluateValueExpr(expr gg_ast.ValueExpression) (*variable.Runt
 			return nil, err
 		}
 
-		op, exists := operators.Get(binExp.Op, left.Typ, right.Typ)
+		op, exists := operators.Get(binExp.Op.Symbol, left.Typ, right.Typ)
 		if !exists {
 			return nil, gg.Runtime(
 				"evaluateValueExpr: op %s not supported between types %s and %s\nevaluating: %s", binExp.Op, left.Typ.String(), right.Typ.String(), gg_ast.NoBuilderExprString(expr))
@@ -77,6 +77,23 @@ func (p *Program) evaluateValueExpr(expr gg_ast.ValueExpression) (*variable.Runt
 			Val: NewRuntimeFunc(decl, p.currentScope()),
 			Typ: variable.Function,
 		}, nil
+	case gg_ast.ExprUnary:
+		e := expr.(*gg_ast.UnaryExpression)
+		rhs, err := p.evaluateValueExpr(e.Rhs)
+		if err != nil {
+			return nil, err
+		}
+		op, exists := operators.GetUnary(e.Op.Symbol, rhs.Typ)
+		if !exists {
+			return nil, gg.Runtime(
+				"evaluateValueExpr: unary op %s not supported for type %s\nevaluating: %s", e.Op.Symbol, rhs.Typ.String(), gg_ast.NoBuilderExprString(expr))
+		}
+		value := op.Evaluate(rhs.Val)
+		return &variable.RuntimeValue{
+			Val: value,
+			Typ: rhs.Typ,
+		}, nil
+
 	default:
 		return nil, gg.Crit("evaluateValueExpr: invalid expression type: %v", expr)
 	}

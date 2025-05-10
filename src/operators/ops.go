@@ -12,8 +12,16 @@ type Operator interface {
 }
 
 type UnaryOperator interface {
-	Operator
-	UnaryEvaluate(right interface{}) interface{}
+	Evaluate(right interface{}) interface{}
+	ResultType() variable.VarType
+}
+
+type UnaryOpMap struct {
+	ops map[string]UnaryOperator
+}
+
+func (o *UnaryOpMap) setUnary(name string, right variable.VarType, op UnaryOperator) {
+	o.ops[unaryOpKey(name, right)] = op
 }
 
 type OpMap struct {
@@ -29,9 +37,11 @@ func unaryOpKey(name string, right variable.VarType) string {
 }
 
 var defaultOpMap map[string]Operator
+var defaultUnaryOpMap map[string]UnaryOperator
 
 func init() {
 	defaultOpMap = Default().ops
+	defaultUnaryOpMap = DefaultUnary().ops
 }
 
 func Get(name string, left, right variable.VarType) (Operator, bool) {
@@ -41,25 +51,32 @@ func Get(name string, left, right variable.VarType) (Operator, bool) {
 }
 
 func GetUnary(name string, right variable.VarType) (UnaryOperator, bool) {
-	ops := defaultOpMap
-	op, ok := ops[unaryOpKey(name, right)]
+	op, ok := defaultUnaryOpMap[unaryOpKey(name, right)]
 	uop, ok := op.(UnaryOperator)
 	return uop, ok
 }
 
-func (o *OpMap) Get(name string, left, right variable.VarType) (Operator, bool) {
-	op, ok := o.ops[opKey(name, left, right)]
-	return op, ok
-}
 func (o *OpMap) set(name string, left, right variable.VarType, op Operator) {
 	o.ops[opKey(name, left, right)] = op
 }
+
 func (o *OpMap) String() string {
 	var sb strings.Builder
 	for key, op := range o.ops {
 		sb.WriteString(fmt.Sprintf("\t%s: %T\n", key, op))
 	}
 	return sb.String()
+}
+
+func DefaultUnary() *UnaryOpMap {
+	opm := &UnaryOpMap{
+		ops: make(map[string]UnaryOperator),
+	}
+
+	opm.setUnary("-", variable.Integer, &minusInt{})
+	opm.setUnary("!", variable.Boolean, &notBool{})
+
+	return opm
 }
 
 func Default() *OpMap {
@@ -95,6 +112,7 @@ func Default() *OpMap {
 
 	opm.set("==", variable.Void, variable.Void, &equalsAlwaysTrue{})
 	opm.set("!=", variable.Void, variable.Void, &equalsAlwaysFalse{})
+
 	return opm
 }
 

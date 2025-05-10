@@ -83,3 +83,11 @@ func (g *greaterThanEqualInts) Evaluate(left, right interface{}) interface{} {
 	return left.(int) >= right.(int)
 }
 func (g *greaterThanEqualInts) ResultType() variable.VarType { return variable.Boolean }
+
+// -int
+type minusInt struct{}
+
+func (m *minusInt) Evaluate(right interface{}) interface{} {
+	return -right.(int)
+}
+func (m *minusInt) ResultType() variable.VarType { return variable.Integer }

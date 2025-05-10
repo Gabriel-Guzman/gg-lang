@@ -165,7 +165,7 @@ func parseFuncDecl(p tokenParser) (*FunctionDeclExpression, error) {
 		return nil, gg.Runtime("expected '(' after function name\n%s", p.String())
 	}
 
-	var params []string
+	var params []token.Token
 	for {
 		if !p.HasCurr {
 			return nil, gg.Runtime("Unexpected end of param list\n%s", p.String())
@@ -183,7 +183,7 @@ func parseFuncDecl(p tokenParser) (*FunctionDeclExpression, error) {
 			return nil, gg.Runtime("Unexpected token\n%s", p.String())
 		}
 
-		params = append(params, param.Str)
+		params = append(params, param)
 		p.Advance()
 	}
 
@@ -214,10 +214,10 @@ func parseIdentifier(p tokenParser) (*Identifier, error) {
 	case token.FalseLiteral:
 		ik = IdExprBool
 	default:
-		return nil, gg.Runtime("invalid identifier %s", t.Str)
+		return nil, gg.Runtime("invalid identifier %s", t.Symbol)
 	}
 	p.Advance()
-	return &Identifier{Raw: t.Str, idKind: ik}, nil
+	return &Identifier{Tok: t, idKind: ik}, nil
 }
 
 // returns a primary expression or a binary expression
@@ -246,7 +246,7 @@ func parseValueExpr(p tokenParser) (ValueExpression, error) {
 
 	lhs := &BinaryExpression{
 		Lhs: lhsNonBinary,
-		Op:  op.Str,
+		Op:  op,
 		Rhs: rhs,
 	}
 
@@ -263,17 +263,17 @@ func parseValueExpr(p tokenParser) (ValueExpression, error) {
 			return nil, err
 		}
 
-		if operators.LeftFirst(lhs.Op, op.Str) {
+		if operators.LeftFirst(lhs.Op.Symbol, op.Symbol) {
 			// left needs to be evaluated first and therefor deeper into the tree
 			lhs = &BinaryExpression{
 				Lhs: lhs,
-				Op:  op.Str,
+				Op:  op,
 				Rhs: rhs,
 			}
 		} else {
 			lhs.Rhs = &BinaryExpression{
 				Lhs: lhs.Rhs,
-				Op:  op.Str,
+				Op:  op,
 				Rhs: rhs,
 			}
 		}
@@ -288,19 +288,16 @@ func parsePrimaryExpr(p tokenParser) (ValueExpression, error) {
 	}
 
 	// unary operators
-	if p.Curr.TokenType == token.Minus {
+	if p.Curr.TokenType.IsOperator() {
+		op := p.Curr
 		p.Advance()
 		toNegate, err := parsePrimaryExpr(p)
 		if err != nil {
 			return nil, err
 		}
 
-		return &BinaryExpression{
-			Lhs: &Identifier{
-				Raw:    "-1",
-				idKind: IdExprNumber,
-			},
-			Op:  "*",
+		return &UnaryExpression{
+			Op:  op,
 			Rhs: toNegate,
 		}, nil
 	}

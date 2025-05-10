@@ -40,12 +40,12 @@ func newAstBuilder(ins []token.Token) *builder {
 }
 
 func BuildFromString(ins string) (*Ast, error) {
-	stmts, err := token.TokenizeRunes([]rune(ins))
+	tokens, err := token.TokenizeRunes([]rune(ins))
 	if err != nil {
 		return nil, err
 	}
 
-	return BuildFromTokens(stmts)
+	return BuildFromTokens(tokens)
 }
 
 func BuildFromTokens(ins []token.Token) (*Ast, error) {

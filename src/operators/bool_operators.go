@@ -6,7 +6,7 @@ import (
 
 type equalsAlwaysTrue struct{}
 
-func (e *equalsAlwaysTrue) Evaluate(left, right interface{}) interface{} {
+func (e *equalsAlwaysTrue) Evaluate(_, _ interface{}) interface{} {
 	return true
 }
 func (e *equalsAlwaysTrue) ResultType() variable.VarType {
@@ -15,7 +15,7 @@ func (e *equalsAlwaysTrue) ResultType() variable.VarType {
 
 type equalsAlwaysFalse struct{}
 
-func (e *equalsAlwaysFalse) Evaluate(left, right interface{}) interface{} {
+func (e *equalsAlwaysFalse) Evaluate(_, _ interface{}) interface{} {
 	return false
 }
 func (e *equalsAlwaysFalse) ResultType() variable.VarType {
@@ -74,5 +74,15 @@ func (n *notEqualsBools) Evaluate(lhs interface{}, rhs interface{}) interface{} 
 	return lhs.(bool) != rhs.(bool)
 }
 func (n *notEqualsBools) ResultType() variable.VarType {
+	return variable.Boolean
+}
+
+// !bool
+type notBool struct{}
+
+func (n *notBool) Evaluate(input interface{}) interface{} {
+	return !input.(bool)
+}
+func (n *notBool) ResultType() variable.VarType {
 	return variable.Boolean
 }

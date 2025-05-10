@@ -148,10 +148,10 @@ func lookup(in string) Type {
 type Token struct {
 	Start     int `json:"-"`
 	End       int `json:"-"`
-	Str       string
+	Symbol    string
 	TokenType Type
 }
 
 func (t Token) String() string {
-	return fmt.Sprintf("(%d-%d) %s", t.Start, t.End, t.Str)
+	return fmt.Sprintf("(%d-%d) %s", t.Start, t.End, t.Symbol)
 }

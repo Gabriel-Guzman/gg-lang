@@ -84,7 +84,7 @@ func (t *tkzr) parseReservedSingleRuneTok(tokType Type) Token {
 	ret := Token{
 		Start:     t.Par.Index(),
 		End:       t.Par.Index() + 1,
-		Str:       string(curr),
+		Symbol:    string(curr),
 		TokenType: tokType,
 	}
 
@@ -123,7 +123,7 @@ func parseIdentifier(p *parser.Parser[rune]) (Token, error) {
 		return Token{
 			Start:     start,
 			End:       p.Index() + 1,
-			Str:       id,
+			Symbol:    id,
 			TokenType: tt,
 		}, nil
 	}
@@ -131,7 +131,7 @@ func parseIdentifier(p *parser.Parser[rune]) (Token, error) {
 	return Token{
 		Start:     start,
 		End:       p.Index() + 1,
-		Str:       id,
+		Symbol:    id,
 		TokenType: Ident,
 	}, nil
 }
@@ -161,7 +161,7 @@ func parseNumLiteral(p *parser.Parser[rune]) (Token, error) {
 	return Token{
 		Start:     start,
 		End:       p.Index() + 1,
-		Str:       num,
+		Symbol:    num,
 		TokenType: IntLiteral,
 	}, nil
 }
@@ -202,7 +202,7 @@ func parseOperator(p *parser.Parser[rune]) (Token, error) {
 		return Token{
 			Start:     start,
 			End:       p.Index() + 1,
-			Str:       op,
+			Symbol:    op,
 			TokenType: realOp,
 		}, nil
 	}
@@ -239,7 +239,7 @@ func parseStringLiteral(p *parser.Parser[rune]) (Token, error) {
 	return Token{
 		Start:     start,
 		End:       p.Index() + 1,
-		Str:       str,
+		Symbol:    str,
 		TokenType: StringLiteral,
 	}, nil
 }

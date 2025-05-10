@@ -10,13 +10,13 @@ func (p *Program) call(f *gg_ast.FunctionCallExpression) (*variable.RuntimeValue
 	// find the function
 	v := p.currentScope().findVariable(f.Name())
 	if v == nil {
-		return nil, gg.Runtime("undefined function %s, evaluating\n%s", f.Id.Raw, gg_ast.NoBuilderExprString(f))
+		return nil, gg.Runtime("undefined function %s, evaluating\n%s", f.Id.Tok.Symbol, gg_ast.NoBuilderExprString(f))
 	}
 
 	// check if callable
 	if _, ok := v.RuntimeValue.Val.(Func); !ok {
 		if _, ok := v.RuntimeValue.Val.(*RuntimeFunc); !ok {
-			return nil, gg.Runtime("%s is not callable, evaluating\n%s", f.Id.Raw, gg_ast.NoBuilderExprString(f))
+			return nil, gg.Runtime("%s is not callable, evaluating\n%s", f.Id.Tok.Symbol, gg_ast.NoBuilderExprString(f))
 		}
 	}
 
@@ -39,7 +39,7 @@ func (p *Program) call(f *gg_ast.FunctionCallExpression) (*variable.RuntimeValue
 	// set up func expression
 	runtimeFunc := v.RuntimeValue.Val.(*RuntimeFunc)
 	if len(runtimeFunc.Decl.Params) != len(f.Args) {
-		return nil, gg.Runtime("param count mismatch on %s, evaluating\n%s", f.Id.Raw, gg_ast.NoBuilderExprString(f))
+		return nil, gg.Runtime("param count mismatch on %s, evaluating\n%s", f.Id.Tok.Symbol, gg_ast.NoBuilderExprString(f))
 	}
 
 	// build variables for new scope
@@ -47,9 +47,9 @@ func (p *Program) call(f *gg_ast.FunctionCallExpression) (*variable.RuntimeValue
 	for i := range f.Args {
 		value := vals[i]
 
-		name := runtimeFunc.Decl.Params[i]
+		paramTok := runtimeFunc.Decl.Params[i]
 		scopedVariables = append(scopedVariables, variable.Variable{
-			Name:         name,
+			Name:         paramTok.Symbol,
 			RuntimeValue: value,
 		})
 	}

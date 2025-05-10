@@ -3,6 +3,7 @@ package gg_ast
 
 import (
 	"fmt"
+	"gg-lang/src/token"
 	"strings"
 )
 
@@ -16,16 +17,55 @@ const (
 	IdExprVariable = IdExprKind(ExprVariable)
 )
 
+type Literal struct {
+	Tok token.Token
+}
+
+func (l *Literal) Name() string {
+	return l.Tok.Symbol
+}
+
+func getLiteralKind(tok token.Token) ExpressionKind {
+	switch tok.TokenType {
+	case token.FalseLiteral:
+		fallthrough
+	case token.TrueLiteral:
+		return ExprBoolLiteral
+	case token.IntLiteral:
+		return ExprIntLiteral
+	case token.StringLiteral:
+		return ExprStringLiteral
+	default:
+		panic(fmt.Sprintf("unknown token type: %v", tok.TokenType))
+	}
+}
+func (l *Literal) Kind() ExpressionKind {
+	return getLiteralKind(l.Tok)
+}
+
 // a
 type Identifier struct {
-	Raw    string
+	Tok    token.Token
 	idKind IdExprKind
 }
 
 func (id *Identifier) Name() string {
-	return id.Raw
+	return id.Tok.Symbol
 }
-func (id *Identifier) Kind() ExpressionKind { return ExpressionKind(id.idKind) }
+func (id *Identifier) Kind() ExpressionKind {
+	switch id.idKind {
+	case IdExprNumber:
+		return ExprIntLiteral
+	case IdExprString:
+		return ExprStringLiteral
+	case IdExprBool:
+		return ExprBoolLiteral
+	case IdExprVariable:
+		return ExprVariable
+	}
+
+	panic(fmt.Sprintf("unknown identifier kind: %v", id.idKind))
+}
 
 // { print(a) }
 type BlockStatement []Expression
@@ -35,21 +75,21 @@ func (bs BlockStatement) Kind() ExpressionKind         { return ExprBlock }
 
 // -b
 type UnaryExpression struct {
-	Op  string
+	Op  token.Token
 	Rhs ValueExpression
 }
 
-func (be *UnaryExpression) Name() string         { return be.Op }
+func (be *UnaryExpression) Name() string         { return be.Op.Symbol }
 func (be *UnaryExpression) Kind() ExpressionKind { return ExprUnary }
 
 // a + b
 type BinaryExpression struct {
 	Lhs ValueExpression
-	Op  string
+	Op  token.Token
 	Rhs ValueExpression
 }
 
-func (be *BinaryExpression) Name() string         { return be.Op }
+func (be *BinaryExpression) Name() string         { return be.Op.Symbol }
 func (be *BinaryExpression) Kind() ExpressionKind { return ExprBinary }
 
 // a(b, c)
@@ -72,7 +112,7 @@ func (ae *AssignmentExpression) Kind() ExpressionKind { return ExprAssignment }
 // routine a(b, c) {
 type FunctionDeclExpression struct {
 	Target *Identifier
-	Params []string
+	Params []token.Token
 	Body   BlockStatement
 }
 
@@ -134,37 +174,36 @@ func ExprString(e Expression, d int, sb *strings.Builder) {
 	}
 	sb.WriteString("\n")
 
-	switch e.(type) {
+	switch val := e.(type) {
 	case *AssignmentExpression:
-		val := e.(*AssignmentExpression)
 		w("assign of ")
 		ExprString(val.Value, d+1, sb)
 		sb.WriteString("\n")
 		w(" to")
 		ExprString(val.Target, d+1, sb)
 	case *BinaryExpression:
-		val := e.(*BinaryExpression)
 		w("operation of ")
 		ExprString(val.Lhs, d+1, sb)
 		sb.WriteString("\n")
-		w(val.Op)
+		w(val.Op.Symbol)
 		ExprString(val.Rhs, d+1, sb)
 	case *Identifier:
-		id := e.(*Identifier)
-		w("Ident " + id.idKind.String() + " " + id.Raw)
+		w("Ident " + val.idKind.String() + " " + val.Tok.Symbol)
 	case *FunctionCallExpression:
-		val := e.(*FunctionCallExpression)
 		w("call to " + val.Id.Name())
 		for _, param := range val.Args {
 			ExprString(param, d+1, sb)
 		}
 	case *FunctionDeclExpression:
-		val := e.(*FunctionDeclExpression)
-		w("decl of " + val.Target.Name() + fmt.Sprintf("(%s)\n", strings.Join(val.Params, ", ")))
+		w("decl of " + val.Target.Name())
 		w(" to do")
 		for _, expr := range val.Body {
 			ExprString(expr, d+1, sb)
 		}
+	case *UnaryExpression:
+		w("operation of " + val.Op.Symbol)
+		ExprString(val.Rhs, d+1, sb)
+	case *BlockStatement:
 	default:
 		panic(fmt.Sprintf("unknown expression type: %T", e))
 	}
