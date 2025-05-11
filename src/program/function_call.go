@@ -67,7 +67,7 @@ func (p *Program) call(f *gg_ast.FunctionCallExpression) (*variable.RuntimeValue
 
 	// run the function body
 	for _, stmt := range runtimeFunc.Decl.Body {
-		err := p.RunStmt(stmt)
+		err := p.RunExpression(stmt)
 		if err != nil {
 			return nil, err
 		}

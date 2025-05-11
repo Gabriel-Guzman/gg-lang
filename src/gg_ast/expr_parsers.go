@@ -23,7 +23,7 @@ type tokenParser = *parser.Parser[token.Token]
 
 // a statement is a function call, declaration, assignment expression, or a for loop expression
 // it is up to the builder to disallow these expressions if it's not parsing the top level
-func parseStatement(p tokenParser) (Expression, error) {
+func parseExpression(p tokenParser) (Expression, error) {
 	// first expression should be an identifier, a reserved keyword, or a value expression
 	// check reserved keywords first
 	if p.Curr.TokenType == token.Function {

@@ -20,7 +20,7 @@ func parseBlockStatement(par *parser.Parser[token.Token]) (BlockStatement, error
 			return expressions, nil
 		}
 
-		stmt, err := parseStatement(par)
+		stmt, err := parseExpression(par)
 		if err != nil {
 			return nil, err
 		}
@@ -53,12 +53,12 @@ func BuildFromTokens(ins []token.Token) (*Ast, error) {
 
 	var expressions []Expression
 	for a.par.HasCurr {
-		stmt, err := parseStatement(a.par)
+		expr, err := parseExpression(a.par)
 		if err != nil {
 			return nil, err
 		}
 
-		expressions = append(expressions, stmt)
+		expressions = append(expressions, expr)
 	}
 
 	return &Ast{Body: expressions}, nil

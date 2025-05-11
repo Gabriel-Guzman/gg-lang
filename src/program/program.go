@@ -105,7 +105,7 @@ func (p *Program) RunString(code string) error {
 
 func (p *Program) Run(ast *gg_ast.Ast) error {
 	for _, expr := range ast.Body {
-		err := p.RunStmt(expr)
+		err := p.RunExpression(expr)
 		if err != nil {
 			return err
 		}
@@ -114,10 +114,10 @@ func (p *Program) Run(ast *gg_ast.Ast) error {
 	return nil
 }
 
-// essentially the same as RunStmt.
+// essentially the same as RunExpression.
 func (p *Program) runBlockStmt(block gg_ast.BlockStatement) error {
 	for _, stmt := range block {
-		err := p.RunStmt(stmt)
+		err := p.RunExpression(stmt)
 		if err != nil {
 			return err
 		}
@@ -132,7 +132,7 @@ func (p *Program) runBlockStmtNewScope(block gg_ast.BlockStatement) error {
 	return p.runBlockStmt(block)
 }
 
-func (p *Program) RunStmt(expr gg_ast.Expression) error {
+func (p *Program) RunExpression(expr gg_ast.Expression) error {
 	// dont execute anything if there's a return value right now
 	if p.returnValue != nil {
 		return nil
@@ -215,7 +215,7 @@ func (p *Program) execIfElse(expr gg_ast.Expression) error {
 		}
 	} else {
 		if ifElse.ElseExpression != nil {
-			err = p.RunStmt(ifElse.ElseExpression)
+			err = p.RunExpression(ifElse.ElseExpression)
 			if err != nil {
 				return err
 			}

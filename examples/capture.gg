@@ -20,5 +20,3 @@ add();
 add();
 add();
 add();
-
-x = sh:git status
