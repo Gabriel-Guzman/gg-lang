@@ -38,6 +38,9 @@ func parseExpression(p tokenParser) (Expression, error) {
 	if p.Curr.TokenType == token.Return {
 		return parseReturnExpr(p)
 	}
+	if p.Curr.TokenType == token.OpenBrace {
+		return parseObjectExpr(p)
+	}
 
 	// now it could be a function call or an assignment expression, both of which
 	// have to start with an identifier. this means no unassigned value expressions
@@ -45,6 +48,10 @@ func parseExpression(p tokenParser) (Expression, error) {
 	id, err := parseIdentifier(p)
 	if err != nil {
 		return nil, err
+	}
+
+	if p.Curr.TokenType == token.Dot {
+		return parseDotAccessExpr(id, p)
 	}
 
 	if p.Curr.TokenType == token.Assign {
@@ -71,6 +78,59 @@ This will almost always be the token right after the first identifier in the exp
 i.e. the "(" in "funCall();" or the "=" in "x = 1 + 2;"
 After a successful parse, the parser should be pointing to the token after the expression
 */
+func parseObjectExpr(p tokenParser) (ValueExpression, error) {
+	if !advanceIfCurrIs(p, token.OpenBrace) {
+		return nil, gg.Syntax("expected opening brace for object expression\n%s", p.String())
+	}
+	props := make(map[string]ValueExpression)
+	for p.HasCurr && p.Curr.TokenType != token.CloseBrace {
+		prop, err := parseIdentifier(p)
+		if err != nil {
+			return nil, err
+		}
+		if prop.Kind() != ExprVariable {
+			return nil, gg.Crit("expected identifier as object property name, got %s instead in\n%s", prop.Name(), p.String())
+		}
+		if !advanceIfCurrIs(p, token.Colon) {
+			return nil, gg.Syntax("expected ':' after object property name\n%s", p.String())
+		}
+		expr, err := parseValueExpr(p)
+
+		if err != nil {
+			return nil, err
+		}
+		props[prop.Tok.Symbol] = expr
+		if !advanceIfCurrIs(p, token.Comma) {
+			break
+		}
+	}
+	if !advanceIfCurrIs(p, token.CloseBrace) {
+		return nil, gg.Syntax("expected closing brace for object expression\n%s", p.String())
+	}
+	return &ObjectExpression{Properties: props}, nil
+}
+
+func parseDotAccessExpr(id *Identifier, p tokenParser) (ValueExpression, error) {
+	if !advanceIfCurrIs(p, token.Dot) {
+		return nil, gg.Syntax("expected '.' after dot access expression\n%s", p.String())
+	}
+
+	chain := []string{id.Name()}
+	for p.HasCurr && p.Curr.TokenType == token.Ident {
+		chain = append(chain, p.Curr.Symbol)
+		p.Advance()
+		if !advanceIfCurrIs(p, token.Dot) {
+			break
+		}
+	}
+
+	if len(chain) <= 1 {
+		return nil, gg.Syntax("expected identifier after '.'\n%s", p.String())
+	}
+
+	return &DotAccessExpression{AccessChain: chain}, nil
+}
+
 func parseAssignmentExpr(target *Identifier, p tokenParser) (*AssignmentExpression, error) {
 	expr, err := parseValueExpr(p)
 	if err != nil {
@@ -214,7 +274,7 @@ func parseIdentifier(p tokenParser) (*Identifier, error) {
 	case token.FalseLiteral:
 		ik = IdExprBool
 	default:
-		return nil, gg.Runtime("invalid identifier %s", t.Symbol)
+		return nil, gg.Runtime("invalid identifier %s, in\n$s", t.Symbol, p.String())
 	}
 	p.Advance()
 	return &Identifier{Tok: t, idKind: ik}, nil
@@ -306,9 +366,17 @@ func parsePrimaryExpr(p tokenParser) (ValueExpression, error) {
 		return parseFuncDecl(p)
 	}
 
+	if p.Curr.TokenType == token.OpenBrace {
+		return parseObjectExpr(p)
+	}
+
 	id, err := parseIdentifier(p)
 	if err != nil {
 		return nil, err
+	}
+
+	if p.Curr.TokenType == token.Dot {
+		return parseDotAccessExpr(id, p)
 	}
 
 	if p.Curr.TokenType == token.OpenParen {

@@ -36,6 +36,7 @@ const (
 	Term
 	Comma
 	Dot
+	Colon
 	endSeparators
 
 	beginIdentifiers
@@ -110,6 +111,7 @@ var reservedTokens = map[Type]string{
 	// separators
 	Comma: ",",
 	Dot:   ".",
+	Colon: ":",
 
 	// built-in literals
 	TrueLiteral:  "true",

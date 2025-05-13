@@ -124,6 +124,31 @@ func (fde *FunctionDeclExpression) Name() string {
 	return fde.Target.Name()
 }
 
+// { x: 1, y: 2, z: 3 }
+type ObjectExpression struct {
+	Properties map[string]ValueExpression
+}
+
+func (o ObjectExpression) Kind() ExpressionKind {
+	return ExprObject
+}
+
+func (o ObjectExpression) Name() string {
+	return "[object]"
+}
+
+type DotAccessExpression struct {
+	AccessChain []string
+}
+
+func (d DotAccessExpression) Kind() ExpressionKind {
+	return ExprDotAccess
+}
+
+func (d DotAccessExpression) Name() string {
+	return strings.Join(d.AccessChain, ".")
+}
+
 // if a == b { } else if a == c { } else { }
 type IfElseStatement struct {
 	Condition      ValueExpression
@@ -188,7 +213,7 @@ func ExprString(e Expression, d int, sb *strings.Builder) {
 		w(val.Op.Symbol)
 		ExprString(val.Rhs, d+1, sb)
 	case *Identifier:
-		w("Ident " + val.idKind.String() + " " + val.Tok.Symbol)
+		w("Ident " + val.idKind.String() + " " + val.Tok.Symbol + "\n")
 	case *FunctionCallExpression:
 		w("call to " + val.Id.Name())
 		for _, param := range val.Args {
@@ -203,7 +228,13 @@ func ExprString(e Expression, d int, sb *strings.Builder) {
 	case *UnaryExpression:
 		w("operation of " + val.Op.Symbol)
 		ExprString(val.Rhs, d+1, sb)
-	case *BlockStatement:
+	case BlockStatement:
+		w("Block {")
+		for _, expr := range val {
+			ExprString(expr, d+1, sb)
+		}
+
+		w("} end block")
 	default:
 		panic(fmt.Sprintf("unknown expression type: %T", e))
 	}

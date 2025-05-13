@@ -98,3 +98,25 @@ helloWithArg("helloWithArgPrint");
 print(returnValue());
 
 print("end func calls");
+print("begin object tests");
+obj = {
+    a: 1,
+    b: "b"
+};
+
+print("obj.a: 1 : " + obj.a);
+print("obj.b: b : " + obj.b);
+
+obj2 = {
+    a: {
+        aa: 1
+    },
+    b: {
+        bb: "b"
+    }
+};
+
+print("obj2.a.aa: 1 : " + obj2.a.aa);
+print("obj2.b.bb: b : " + obj2.b.bb);
+
+print("end object tests");

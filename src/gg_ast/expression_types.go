@@ -15,6 +15,8 @@ const (
 	ExprVariable
 	ExprStringLiteral
 	ExprFunctionCall
+	ExprObject
+	ExprDotAccess
 	SentinelValueExpression
 
 	/*

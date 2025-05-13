@@ -44,7 +44,7 @@ func (s *Scope) softDeclareVar(name string, value *variable.RuntimeValue) (*vari
 
 type Program struct {
 	scopes *stack.Stack[*Scope]
-	opMap  *operators.OpMap
+	OpMap  *operators.OpMap
 
 	returnValue *variable.RuntimeValue
 }
@@ -61,7 +61,7 @@ func (p *Program) String() string {
 		sb.WriteString(fmt.Sprintf("\t%s: %+v\n", k, v))
 	}
 	sb.WriteString("\nOperators:\n")
-	sb.WriteString(p.opMap.String())
+	sb.WriteString(p.OpMap.String())
 	return sb.String()
 }
 
@@ -71,7 +71,7 @@ func New() *Program {
 	scopes := stack.New[*Scope]()
 	prog := &Program{
 		scopes: scopes,
-		opMap:  operators.Default(),
+		OpMap:  operators.Default(),
 	}
 	prog.enterNewScope()
 
@@ -194,7 +194,7 @@ func (p *Program) RunExpression(expr gg_ast.Expression) error {
 			return err
 		}
 	default:
-		return gg.Crit("Invalid top-level expression: %s", expr.Kind().String())
+		return gg.Crit("Invalid top-level expression: %s\n%s", expr.Kind().String(), gg_ast.NoBuilderExprString(expr))
 	}
 	return nil
 }

@@ -93,7 +93,41 @@ func (p *Program) evaluateValueExpr(expr gg_ast.ValueExpression) (*variable.Runt
 			Val: value,
 			Typ: rhs.Typ,
 		}, nil
+	case gg_ast.ExprObject:
+		e := expr.(*gg_ast.ObjectExpression)
+		val := make(map[string]*variable.RuntimeValue)
+		for name, expr := range e.Properties {
+			value, err := p.evaluateValueExpr(expr)
+			if err != nil {
+				return nil, err
+			}
+			val[name] = value
+		}
+		return &variable.RuntimeValue{
+			Val: val,
+			Typ: variable.Object,
+		}, nil
+	case gg_ast.ExprDotAccess:
+		e := expr.(*gg_ast.DotAccessExpression)
+		v := p.findVariable(e.AccessChain[0])
+		if v == nil {
+			return nil, gg.Runtime("undefined variable: %s\nevaluating %s\n%s", e.AccessChain[0], e.Name(), gg_ast.NoBuilderExprString(expr))
+		}
+		res := v.RuntimeValue
+		if res.Typ != variable.Object {
+			return nil, gg.Runtime("%s is not an object, evaluating\n%s", v.Name, gg_ast.NoBuilderExprString(expr))
+		}
 
+		for _, symbol := range e.AccessChain[1:] {
+			currentPropertyMap := res.Val.(map[string]*variable.RuntimeValue)
+			property, exists := currentPropertyMap[symbol]
+			if !exists {
+				return nil, gg.Runtime("undefined property: %s in object %s\nevaluating %s\n%s", symbol, e.AccessChain[0], e.Name(), gg_ast.NoBuilderExprString(expr))
+			}
+			res = property
+		}
+
+		return res, nil
 	default:
 		return nil, gg.Crit("evaluateValueExpr: invalid expression type: %v", expr)
 	}

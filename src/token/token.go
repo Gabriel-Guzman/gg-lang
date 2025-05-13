@@ -36,8 +36,12 @@ func tokenize(par *parser.Parser[rune]) ([]Token, error) {
 			a(tk.parseReservedSingleRuneTok(OpenBrace))
 		case isRuneReserved(tk.Par.Curr, CloseBrace):
 			a(tk.parseReservedSingleRuneTok(CloseBrace))
+		case isRuneReserved(tk.Par.Curr, Colon):
+			a(tk.parseReservedSingleRuneTok(Colon))
 		case isRuneReserved(tk.Par.Curr, Comma):
 			a(tk.parseReservedSingleRuneTok(Comma))
+		case isRuneReserved(tk.Par.Curr, Dot):
+			a(tk.parseReservedSingleRuneTok(Dot))
 		case isRuneReserved(tk.Par.Curr, OpenParen):
 			a(tk.parseReservedSingleRuneTok(OpenParen))
 		case isRuneReserved(tk.Par.Curr, CloseParen):
@@ -55,7 +59,7 @@ func tokenize(par *parser.Parser[rune]) ([]Token, error) {
 			}
 			a(idTok)
 		default:
-			return nil, gg.Crit("unexpected character\n%s", par.String())
+			return nil, gg.Crit("unexpected character%s\n%s", string(par.Curr), par.String())
 		}
 	}
 

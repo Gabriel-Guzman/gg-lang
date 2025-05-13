@@ -25,7 +25,7 @@ func (o *UnaryOpMap) setUnary(name string, right variable.VarType, op UnaryOpera
 }
 
 type OpMap struct {
-	ops map[string]Operator
+	Ops map[string]Operator
 }
 
 func opKey(name string, left, right variable.VarType) string {
@@ -40,7 +40,7 @@ var defaultOpMap map[string]Operator
 var defaultUnaryOpMap map[string]UnaryOperator
 
 func init() {
-	defaultOpMap = Default().ops
+	defaultOpMap = Default().Ops
 	defaultUnaryOpMap = DefaultUnary().ops
 }
 
@@ -57,12 +57,12 @@ func GetUnary(name string, right variable.VarType) (UnaryOperator, bool) {
 }
 
 func (o *OpMap) set(name string, left, right variable.VarType, op Operator) {
-	o.ops[opKey(name, left, right)] = op
+	o.Ops[opKey(name, left, right)] = op
 }
 
 func (o *OpMap) String() string {
 	var sb strings.Builder
-	for key, op := range o.ops {
+	for key, op := range o.Ops {
 		sb.WriteString(fmt.Sprintf("\t%s: %T\n", key, op))
 	}
 	return sb.String()
@@ -81,7 +81,7 @@ func DefaultUnary() *UnaryOpMap {
 
 func Default() *OpMap {
 	opm := &OpMap{
-		ops: make(map[string]Operator),
+		Ops: make(map[string]Operator),
 	}
 
 	opm.set("+", variable.Integer, variable.Integer, &plusInts{})
