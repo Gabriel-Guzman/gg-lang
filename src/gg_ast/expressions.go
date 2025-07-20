@@ -264,6 +264,9 @@ func ExprString(e Expression, d int, sb *strings.Builder) {
 		ExprString(val.Target, d+1, sb)
 		w(" (dot access)")
 		w("\n")
+	case *ParenthesizedExpression:
+		w("parenthesized expression of ")
+		ExprString(val.Expr, d+1, sb)
 	default:
 		panic(fmt.Sprintf("unknown expression type: %T", e))
 	}
