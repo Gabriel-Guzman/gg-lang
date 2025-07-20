@@ -1,3 +1,12 @@
+print("dot access assignment tests");
+x = {};
+x.four = 4;
+print("new property 4: " + x.four);
+x = {};
+x.one = {};
+x.one.two = 2;
+print("new deep property 2: " + x.one.two);
+
 print("if else tests");
 x = 4;
 if x == 4 {

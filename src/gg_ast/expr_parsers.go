@@ -51,7 +51,13 @@ func parseExpression(p tokenParser) (Expression, error) {
 	}
 
 	if p.Curr.TokenType == token.Dot {
-		return parseDotAccessExpr(id, p)
+		expr, err := parseDotAccessExpr(id, p)
+		if err != nil {
+			return nil, err
+		}
+		if advanceIfCurrIs(p, token.Assign) {
+			return parseDotAccessAssignExpr(expr, p)
+		}
 	}
 
 	if p.Curr.TokenType == token.Assign {
@@ -110,7 +116,7 @@ func parseObjectExpr(p tokenParser) (ValueExpression, error) {
 	return &ObjectExpression{Properties: props}, nil
 }
 
-func parseDotAccessExpr(id *Identifier, p tokenParser) (ValueExpression, error) {
+func parseDotAccessExpr(id *Identifier, p tokenParser) (*DotAccessExpression, error) {
 	if !advanceIfCurrIs(p, token.Dot) {
 		return nil, gg.Syntax("expected '.' after dot access expression\n%s", p.String())
 	}
@@ -256,6 +262,22 @@ func parseFuncDecl(p tokenParser) (*FunctionDeclExpression, error) {
 		Target: id,
 		Params: params,
 		Body:   block,
+	}, nil
+}
+
+func parseDotAccessAssignExpr(target *DotAccessExpression, p tokenParser) (*DotAccessAssignmentExpression, error) {
+	val, err := parseValueExpr(p)
+	if err != nil {
+		return nil, err
+	}
+
+	if !advanceIfCurrIs(p, token.Term) {
+		return nil, gg.Syntax("expected ; after dot-access assignment expression\n%s", p.String())
+	}
+
+	return &DotAccessAssignmentExpression{
+		Target: target,
+		Value:  val,
 	}, nil
 }
 

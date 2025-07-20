@@ -23,6 +23,7 @@ const (
 	   Expression implementing kinds
 	*/
 	ExprAssignment
+	ExprDotAccessAssignment
 	ExprFuncDecl
 	ExprForLoop
 	ExprIfElse

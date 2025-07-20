@@ -95,7 +95,7 @@ func (p *Program) evaluateValueExpr(expr gg_ast.ValueExpression) (*variable.Runt
 		}, nil
 	case gg_ast.ExprObject:
 		e := expr.(*gg_ast.ObjectExpression)
-		val := make(map[string]*variable.RuntimeValue)
+		val := make(Object)
 		for name, expr := range e.Properties {
 			value, err := p.evaluateValueExpr(expr)
 			if err != nil {

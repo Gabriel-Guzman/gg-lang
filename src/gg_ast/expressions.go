@@ -11,10 +11,11 @@ import (
 type IdExprKind int
 
 const (
-	IdExprNumber   = IdExprKind(ExprIntLiteral)
-	IdExprString   = IdExprKind(ExprStringLiteral)
-	IdExprBool     = IdExprKind(ExprBoolLiteral)
-	IdExprVariable = IdExprKind(ExprVariable)
+	IdExprNumber    = IdExprKind(ExprIntLiteral)
+	IdExprString    = IdExprKind(ExprStringLiteral)
+	IdExprBool      = IdExprKind(ExprBoolLiteral)
+	IdExprVariable  = IdExprKind(ExprVariable)
+	IdExprDotAccess = IdExprKind(ExprDotAccess)
 )
 
 type Literal struct {
@@ -62,6 +63,8 @@ func (id *Identifier) Kind() ExpressionKind {
 		return ExprBoolLiteral
 	case IdExprVariable:
 		return ExprVariable
+	case IdExprDotAccess:
+		return ExprDotAccess
 	}
 
 	panic(fmt.Sprintf("unknown identifier kind: %v", id.idKind))
@@ -108,6 +111,14 @@ type AssignmentExpression struct {
 }
 
 func (ae *AssignmentExpression) Kind() ExpressionKind { return ExprAssignment }
+
+// a.b = 5
+type DotAccessAssignmentExpression struct {
+	Target *DotAccessExpression
+	Value  ValueExpression
+}
+
+func (d *DotAccessAssignmentExpression) Kind() ExpressionKind { return ExprDotAccessAssignment }
 
 // routine a(b, c) {
 type FunctionDeclExpression struct {
@@ -235,6 +246,16 @@ func ExprString(e Expression, d int, sb *strings.Builder) {
 		}
 
 		w("} end block")
+	case *DotAccessExpression:
+		w("access to " + val.Name())
+	case *DotAccessAssignmentExpression:
+		w("assign of ")
+		ExprString(val.Value, d+1, sb)
+		sb.WriteString("\n")
+		w("to")
+		ExprString(val.Target, d+1, sb)
+		w(" (dot access)")
+		w("\n")
 	default:
 		panic(fmt.Sprintf("unknown expression type: %T", e))
 	}
