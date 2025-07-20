@@ -85,6 +85,14 @@ type UnaryExpression struct {
 func (be *UnaryExpression) Name() string         { return be.Op.Symbol }
 func (be *UnaryExpression) Kind() ExpressionKind { return ExprUnary }
 
+// (a)
+type ParenthesizedExpression struct {
+	Expr ValueExpression
+}
+
+func (pe *ParenthesizedExpression) Name() string         { return fmt.Sprintf("(%s)", pe.Expr.Name()) }
+func (pe *ParenthesizedExpression) Kind() ExpressionKind { return ExprParenthesized }
+
 // a + b
 type BinaryExpression struct {
 	Lhs ValueExpression

@@ -10,6 +10,9 @@ import (
 
 func (p *Program) evaluateValueExpr(expr gg_ast.ValueExpression) (*variable.RuntimeValue, error) {
 	switch expr.Kind() {
+	case gg_ast.ExprParenthesized:
+		expr := expr.(*gg_ast.ParenthesizedExpression).Expr
+		return p.evaluateValueExpr(expr)
 	case gg_ast.ExprVariable:
 		name := expr.(*gg_ast.Identifier).Name()
 		v := p.findVariable(name)

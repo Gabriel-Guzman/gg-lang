@@ -17,6 +17,7 @@ const (
 	ExprFunctionCall
 	ExprObject
 	ExprDotAccess
+	ExprParenthesized
 	SentinelValueExpression
 
 	/*

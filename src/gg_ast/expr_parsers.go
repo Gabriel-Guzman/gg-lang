@@ -41,6 +41,9 @@ func parseExpression(p tokenParser) (Expression, error) {
 	if p.Curr.TokenType == token.OpenBrace {
 		return parseObjectExpr(p)
 	}
+	if p.Curr.TokenType == token.OpenParen {
+		return parseParenExpr(p)
+	}
 
 	// now it could be a function call or an assignment expression, both of which
 	// have to start with an identifier. this means no unassigned value expressions
@@ -114,6 +117,20 @@ func parseObjectExpr(p tokenParser) (ValueExpression, error) {
 		return nil, gg.Syntax("expected closing brace for object expression\n%s", p.String())
 	}
 	return &ObjectExpression{Properties: props}, nil
+}
+
+func parseParenExpr(p tokenParser) (ValueExpression, error) {
+	if !advanceIfCurrIs(p, token.OpenParen) {
+		return nil, gg.Syntax("expected opening parenthesis for parenthesized expression\n%s", p.String())
+	}
+	expr, err := parseValueExpr(p)
+	if err != nil {
+		return nil, err
+	}
+	if !advanceIfCurrIs(p, token.CloseParen) {
+		return nil, gg.Syntax("expected closing parenthesis for parenthesized expression\n%s", p.String())
+	}
+	return &ParenthesizedExpression{Expr: expr}, nil
 }
 
 func parseDotAccessExpr(id *Identifier, p tokenParser) (*DotAccessExpression, error) {
@@ -390,6 +407,10 @@ func parsePrimaryExpr(p tokenParser) (ValueExpression, error) {
 
 	if p.Curr.TokenType == token.OpenBrace {
 		return parseObjectExpr(p)
+	}
+
+	if p.Curr.TokenType == token.OpenParen {
+		return parseParenExpr(p)
 	}
 
 	id, err := parseIdentifier(p)
