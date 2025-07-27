@@ -53,6 +53,9 @@ const (
 	If
 	Else
 	Return
+	Try
+	Catch
+	Finally
 	endKeywords
 )
 
@@ -123,6 +126,9 @@ var reservedTokens = map[Type]string{
 	If:       "if",
 	Else:     "else",
 	Return:   "return",
+	Try:      "try",
+	Catch:    "catch",
+	Finally:  "finally",
 }
 
 var reservedTokensMap = map[string]Type{}

@@ -30,6 +30,7 @@ const (
 	ExprIfElse
 	ExprBlock
 	ExprReturn
+	ExprTryCatch
 )
 
 type Expression interface {

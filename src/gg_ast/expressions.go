@@ -112,6 +112,23 @@ type FunctionCallExpression struct {
 func (fce *FunctionCallExpression) Name() string         { return fce.Id.Name() }
 func (fce *FunctionCallExpression) Kind() ExpressionKind { return ExprFunctionCall }
 
+// try { a = 32 } catch (e) { print(e) }
+type TryCatchExpression struct {
+	Try     *BlockStatement
+	Catch   *CatchExpression
+	Finally *BlockStatement
+}
+
+func (t TryCatchExpression) Kind() ExpressionKind {
+	return ExprTryCatch
+}
+
+// catch (e) { print(e) }
+type CatchExpression struct {
+	ErrorParam string
+	Body       *BlockStatement
+}
+
 // a = 32
 type AssignmentExpression struct {
 	Target *Identifier

@@ -29,6 +29,9 @@ func parseExpression(p tokenParser) (Expression, error) {
 	if p.Curr.TokenType == token.Function {
 		return parseFuncDecl(p)
 	}
+	if p.Curr.TokenType == token.Try {
+		return parseTryCatchExpr(p)
+	}
 	if p.Curr.TokenType == token.For {
 		return parseForLoopExpr(p)
 	}
@@ -117,6 +120,50 @@ func parseObjectExpr(p tokenParser) (ValueExpression, error) {
 		return nil, gg.Syntax("expected closing brace for object expression\n%s", p.String())
 	}
 	return &ObjectExpression{Properties: props}, nil
+}
+
+func parseTryCatchExpr(p tokenParser) (Expression, error) {
+	if !advanceIfCurrIs(p, token.Try) {
+		return nil, gg.Syntax("expected 'try' keyword for try-catch expression\n%s", p.String())
+	}
+	tryBlock, err := parseBlockStatement(p)
+	if err != nil {
+		return nil, err
+	}
+
+	if !advanceIfCurrIs(p, token.Catch) {
+		return nil, gg.Syntax("expected 'catch' keyword for try-catch expression\n%s", p.String())
+	}
+
+	parenParams, err := parseParenParams(p)
+	if err != nil {
+		return nil, err
+	}
+	if len(parenParams) != 1 {
+		return nil, gg.Syntax("catch statement requires 1 parameter\n%s", p.String())
+	}
+	catchBlock, err := parseBlockStatement(p)
+	if err != nil {
+		return nil, err
+	}
+
+	expr := &TryCatchExpression{
+		Try: &tryBlock,
+		Catch: &CatchExpression{
+			ErrorParam: parenParams[0].Symbol,
+			Body:       &catchBlock,
+		},
+	}
+
+	if advanceIfCurrIs(p, token.Finally) {
+		finallyBlock, err := parseBlockStatement(p)
+		if err != nil {
+			return nil, err
+		}
+		expr.Finally = &finallyBlock
+	}
+
+	return expr, nil
 }
 
 func parseParenExpr(p tokenParser) (ValueExpression, error) {
@@ -236,14 +283,7 @@ func parseReturnExpr(p tokenParser) (*ReturnStatement, error) {
 	return &ReturnStatement{Value: expr}, nil
 }
 
-func parseFuncDecl(p tokenParser) (*FunctionDeclExpression, error) {
-	p.Advance() // eat the function keyword
-
-	id, err := parseIdentifier(p)
-	if err != nil {
-		return nil, err
-	}
-
+func parseParenParams(p tokenParser) ([]token.Token, error) {
 	if !advanceIfCurrIs(p, token.OpenParen) {
 		return nil, gg.Runtime("expected '(' after function name\n%s", p.String())
 	}
@@ -268,6 +308,21 @@ func parseFuncDecl(p tokenParser) (*FunctionDeclExpression, error) {
 
 		params = append(params, param)
 		p.Advance()
+	}
+	return params, nil
+}
+
+func parseFuncDecl(p tokenParser) (*FunctionDeclExpression, error) {
+	p.Advance() // eat the function keyword
+
+	id, err := parseIdentifier(p)
+	if err != nil {
+		return nil, err
+	}
+
+	params, err := parseParenParams(p)
+	if err != nil {
+		return nil, err
 	}
 
 	block, err := parseBlockStatement(p)
