@@ -47,6 +47,9 @@ func parseExpression(p tokenParser) (Expression, error) {
 	if p.Curr.TokenType == token.OpenParen {
 		return parseParenExpr(p)
 	}
+	if p.Curr.TokenType == token.OpenBracket {
+		return parseArrayDeclExpr(p)
+	}
 
 	// now it could be a function call or an assignment expression, both of which
 	// have to start with an identifier. this means no unassigned value expressions
@@ -71,23 +74,43 @@ func parseExpression(p tokenParser) (Expression, error) {
 		return parseAssignmentExpr(id, p)
 	}
 
-	// if no operator, it's a function call
-	expr, err := parseFuncCallExpr(id, p)
-	if err != nil {
-		return nil, err
+	if p.Curr.TokenType == token.OpenParen {
+		expr, err := parseFuncCallExpr(id, p)
+		if err != nil {
+			return nil, err
+		}
+		if !advanceIfCurrIs(p, token.Term) {
+			return nil, gg.Syntax("expected ; after top-level function call\n%s", p.String())
+		}
+		return expr, nil
 	}
-	if !advanceIfCurrIs(p, token.Term) {
-		return nil, gg.Syntax("expected ; after function call\n%s", p.String())
+
+	if p.Curr.TokenType == token.OpenBracket {
+		expr, err := parseArrayAccessExpr(id, p)
+		if err != nil {
+			return nil, err
+		}
+		return parseArrayIndexAssignExpr(expr, p)
 	}
-	return expr, nil
+
+	return nil, gg.Syntax("invalid top-level expression: %s \nin %s", p.Curr.Symbol, p.String())
+
+	////// if no operator, it's a function call
+	//expr, err := parseFuncCallExpr(id, p)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//if !advanceIfCurrIs(p, token.Term) {
+	//	return nil, gg.Syntax("expected ; after function call\n%s", p.String())
+	//}
+	//return expr, nil
 }
 
 /*
 The parser argument to an expression parser should
 be pointing to the first token in the expression to be parsed,
 meaning parser.Curr == <first relevant token>
-This will almost always be the token right after the first identifier in the expression
-i.e. the "(" in "funCall();" or the "=" in "x = 1 + 2;"
+If the expression starts with a keyword, p will be pointing to the next token.
 After a successful parse, the parser should be pointing to the token after the expression
 */
 func parseObjectExpr(p tokenParser) (ValueExpression, error) {
@@ -135,7 +158,7 @@ func parseTryCatchExpr(p tokenParser) (Expression, error) {
 		return nil, gg.Syntax("expected 'catch' keyword for try-catch expression\n%s", p.String())
 	}
 
-	parenParams, err := parseParenParams(p)
+	parenParams, err := params(p, token.OpenParen, token.CloseParen)
 	if err != nil {
 		return nil, err
 	}
@@ -283,8 +306,8 @@ func parseReturnExpr(p tokenParser) (*ReturnStatement, error) {
 	return &ReturnStatement{Value: expr}, nil
 }
 
-func parseParenParams(p tokenParser) ([]token.Token, error) {
-	if !advanceIfCurrIs(p, token.OpenParen) {
+func params(p tokenParser, open token.Type, close token.Type) ([]token.Token, error) {
+	if !advanceIfCurrIs(p, open) {
 		return nil, gg.Runtime("expected '(' after function name\n%s", p.String())
 	}
 
@@ -294,7 +317,7 @@ func parseParenParams(p tokenParser) ([]token.Token, error) {
 			return nil, gg.Runtime("Unexpected end of param list\n%s", p.String())
 		}
 		param := p.Curr
-		if param.TokenType == token.CloseParen {
+		if param.TokenType == close {
 			p.Advance() // eat the closing parenthesis ')'
 			break
 		}
@@ -320,7 +343,7 @@ func parseFuncDecl(p tokenParser) (*FunctionDeclExpression, error) {
 		return nil, err
 	}
 
-	params, err := parseParenParams(p)
+	params, err := params(p, token.OpenParen, token.CloseParen)
 	if err != nil {
 		return nil, err
 	}
@@ -351,6 +374,14 @@ func parseDotAccessAssignExpr(target *DotAccessExpression, p tokenParser) (*DotA
 		Target: target,
 		Value:  val,
 	}, nil
+}
+
+func parseArrayDeclExpr(p tokenParser) (*ArrayDeclExpression, error) {
+	members, err := arguments(p, token.OpenBracket, token.CloseBracket)
+	if err != nil {
+		return nil, err
+	}
+	return &ArrayDeclExpression{Elements: members}, nil
 }
 
 func parseIdentifier(p tokenParser) (*Identifier, error) {
@@ -468,6 +499,10 @@ func parsePrimaryExpr(p tokenParser) (ValueExpression, error) {
 		return parseParenExpr(p)
 	}
 
+	if p.Curr.TokenType == token.OpenBracket {
+		return parseArrayDeclExpr(p)
+	}
+
 	id, err := parseIdentifier(p)
 	if err != nil {
 		return nil, err
@@ -479,39 +514,84 @@ func parsePrimaryExpr(p tokenParser) (ValueExpression, error) {
 
 	if p.Curr.TokenType == token.OpenParen {
 		return parseFuncCallExpr(id, p)
-	} else {
-		return id, nil
 	}
 
+	if p.Curr.TokenType == token.OpenBracket {
+		return parseArrayAccessExpr(id, p)
+	}
+
+	return id, nil
 }
 
-func parseFuncCallExpr(id *Identifier, p tokenParser) (ValueExpression, error) {
-	if !advanceIfCurrIs(p, token.OpenParen) {
-		return nil, gg.Runtime("expected '(' after function name\n%s", p.String())
+func parseArrayAccessExpr(id *Identifier, p tokenParser) (*ArrayIndexExpression, error) {
+	args, err := arguments(p, token.OpenBracket, token.CloseBracket)
+	if err != nil {
+		return nil, err
 	}
-	if p.Curr.TokenType == token.CloseParen {
-		p.Advance() // consume the ')'
-		return &FunctionCallExpression{Id: id}, nil
+	if len(args) != 1 {
+		return nil, gg.Syntax("expected 1 argument in array access expression, got %d\n%s", len(args), p.String())
+	}
+	return &ArrayIndexExpression{
+		Array: id,
+		Index: args[0],
+	}, nil
+}
+
+func parseArrayIndexAssignExpr(arrayAccessExpr *ArrayIndexExpression, p tokenParser) (*ArrayIndexAssignmentExpression, error) {
+	if !advanceIfCurrIs(p, token.Assign) {
+		return nil, gg.Syntax("expected '=' after array index assignment expression\n%s", p.String())
+	}
+
+	val, err := parseValueExpr(p)
+	if err != nil {
+		return nil, err
+	}
+	if !advanceIfCurrIs(p, token.Term) {
+		return nil, gg.Syntax("expected ; after array index assignment\n%s", p.String())
+	}
+
+	return &ArrayIndexAssignmentExpression{
+		ArrayIndexExpression: arrayAccessExpr,
+		Value:                val,
+	}, nil
+}
+
+func arguments(p tokenParser, open, close token.Type) ([]ValueExpression, error) {
+	if !advanceIfCurrIs(p, open) {
+		return nil, gg.Syntax("expected '%s' after '%s'\n%s", close, open, p.String())
 	}
 
 	var args []ValueExpression
+	if advanceIfCurrIs(p, close) {
+		return args, nil
+	}
+
 	for {
-		if !p.HasCurr {
-			return nil, gg.Runtime("Unexpected end of arg list\n%s", p.String())
-		}
+		if p.HasCurr {
+			expr, err := parseValueExpr(p)
+			if err != nil {
+				return nil, err
+			}
+			args = append(args, expr)
 
-		expr, err := parseValueExpr(p)
-		if err != nil {
-			return nil, err
+			if !advanceIfCurrIs(p, token.Comma) {
+				break
+			}
+		} else {
+			return nil, gg.Syntax("unexpected end of expression\n%s", p.String())
 		}
-		args = append(args, expr)
+	}
 
-		if advanceIfCurrIs(p, token.CloseParen) { // consume the ')'
-			break
-		}
-		if !advanceIfCurrIs(p, token.Comma) {
-			return nil, gg.Runtime("expected ',' or ')' after argument\n%s", p.String())
-		}
+	if !advanceIfCurrIs(p, close) {
+		return nil, gg.Syntax("expected '%s' after last argument\n%s", close, p.String())
+	}
+
+	return args, nil
+}
+func parseFuncCallExpr(id *Identifier, p tokenParser) (ValueExpression, error) {
+	args, err := arguments(p, token.OpenParen, token.CloseParen)
+	if err != nil {
+		return nil, err
 	}
 
 	return &FunctionCallExpression{

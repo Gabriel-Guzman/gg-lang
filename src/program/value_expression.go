@@ -10,6 +10,12 @@ import (
 
 func (p *Program) evaluateValueExpr(expr gg_ast.ValueExpression) (*variable.RuntimeValue, error) {
 	switch expr.Kind() {
+	case gg_ast.ExprArrayIndex:
+		expr := expr.(*gg_ast.ArrayIndexExpression)
+		return p.evaluateArrayIndexExpression(expr)
+	case gg_ast.ExprArrayDecl:
+		expr := expr.(*gg_ast.ArrayDeclExpression)
+		return p.evaluateArrayDeclExpression(expr)
 	case gg_ast.ExprParenthesized:
 		expr := expr.(*gg_ast.ParenthesizedExpression).Expr
 		return p.evaluateValueExpr(expr)

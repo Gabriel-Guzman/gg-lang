@@ -16,6 +16,8 @@ const (
 	BuiltinFunction
 	// Object is a container of variables with a name
 	Object
+	// Array represents a list of values
+	Array
 	// Void is the empty type, representing the absence of a value.
 	Void
 )

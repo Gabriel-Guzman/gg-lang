@@ -160,6 +160,42 @@ func (fde *FunctionDeclExpression) Name() string {
 	return fde.Target.Name()
 }
 
+// [1, 2, 3]
+type ArrayDeclExpression struct {
+	Elements []ValueExpression
+}
+
+func (a ArrayDeclExpression) Kind() ExpressionKind { return ExprArrayDecl }
+func (a ArrayDeclExpression) Name() string {
+	var elements []string
+	for _, e := range a.Elements {
+		elements = append(elements, e.Name())
+	}
+	return fmt.Sprintf("[%s]", strings.Join(elements, ", "))
+}
+
+// a[1]
+type ArrayIndexExpression struct {
+	Array *Identifier
+	Index ValueExpression
+}
+
+// a[1] = 1
+type ArrayIndexAssignmentExpression struct {
+	*ArrayIndexExpression
+	Value ValueExpression
+}
+
+func (ai ArrayIndexAssignmentExpression) Kind() ExpressionKind { return ExprArrayIndexAssignment }
+func (ai ArrayIndexAssignmentExpression) Name() string {
+	return fmt.Sprintf("%s[%s] = %s", ai.Array.Name(), ai.Index.Name(), ai.Value.Name())
+}
+
+func (ai ArrayIndexExpression) Kind() ExpressionKind { return ExprArrayIndex }
+func (ai ArrayIndexExpression) Name() string {
+	return fmt.Sprintf("%s[%s]", ai.Array.Name(), ai.Index.Name())
+}
+
 // { x: 1, y: 2, z: 3 }
 type ObjectExpression struct {
 	Properties map[string]ValueExpression
@@ -284,6 +320,30 @@ func ExprString(e Expression, d int, sb *strings.Builder) {
 	case *ParenthesizedExpression:
 		w("parenthesized expression of ")
 		ExprString(val.Expr, d+1, sb)
+	case *ArrayDeclExpression:
+		w("array declaration of ")
+		for i, expr := range val.Elements {
+			ExprString(expr, d+1, sb)
+			if i < len(val.Elements)-1 {
+				w(", ")
+			}
+		}
+	case *ArrayIndexExpression:
+		w("access to array index of ")
+		ExprString(val.Array, d+1, sb)
+		w(" [")
+		ExprString(val.Index, d+1, sb)
+		w("]")
+		w("\n")
+	case *ArrayIndexAssignmentExpression:
+		w("assign of ")
+		ExprString(val.Value, d+1, sb)
+		sb.WriteString("\n")
+		w("to")
+		ExprString(val.ArrayIndexExpression, d+1, sb)
+		w(" (array index assignment)")
+		w("\n")
+
 	default:
 		panic(fmt.Sprintf("unknown expression type: %T", e))
 	}

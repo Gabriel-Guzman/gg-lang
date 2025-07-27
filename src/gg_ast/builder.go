@@ -33,6 +33,15 @@ func parseBlockStatement(par *parser.Parser[token.Token]) (BlockStatement, error
 
 func newAstBuilder(ins []token.Token) *builder {
 	par := parser.New(ins)
+	par.SetStringer(func(in token.Token) string {
+		if in.TokenType == token.Term {
+			return in.Symbol + "\n"
+		}
+		return in.Symbol
+	})
+	par.SetSeparator(" ")
+	par.TruncBefore = 10
+	par.TruncAfter = 10
 
 	return &builder{
 		par: par,

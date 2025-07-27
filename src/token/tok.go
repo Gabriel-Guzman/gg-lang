@@ -29,6 +29,8 @@ const (
 	CloseParen
 	OpenBrace
 	CloseBrace
+	OpenBracket
+	CloseBracket
 	Quote
 	endContainers
 
@@ -105,11 +107,13 @@ var reservedTokens = map[Type]string{
 	Term: ";",
 
 	// containers
-	OpenParen:  "(",
-	CloseParen: ")",
-	OpenBrace:  "{",
-	CloseBrace: "}",
-	Quote:      "\"",
+	OpenParen:    "(",
+	CloseParen:   ")",
+	OpenBrace:    "{",
+	CloseBrace:   "}",
+	OpenBracket:  "[",
+	CloseBracket: "]",
+	Quote:        "\"",
 
 	// separators
 	Comma: ",",

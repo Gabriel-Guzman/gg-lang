@@ -158,3 +158,25 @@ try {
     print("finally block executed");
 }
 print("end try/catch tests");
+
+print("array tests");
+arr = [1, "two", 3, true, false];
+print("arr[0]: 1 : " + arr[0]);
+print("arr[1]: two : " + arr[1]);
+print("arr[2]: 3 : " + arr[2]);
+print("arr[3]: true : " + arr[3]);
+print("arr[4]: false : " + arr[4]);
+
+arr[0] = 5;
+arr[1] = "six";
+arr[2] = 7;
+arr[3] = false;
+arr[4] = true;
+
+print("after change arr[0]: 5 : " + arr[0]);
+print("after change arr[1]: six : " + arr[1]);
+print("after change arr[2]: 7 : " + arr[2]);
+print("after change arr[3]: false : " + arr[3]);    
+print("after change arr[4]: true : " + arr[4]);
+
+print("end array tests");

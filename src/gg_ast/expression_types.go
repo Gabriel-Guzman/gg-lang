@@ -16,6 +16,9 @@ const (
 	ExprStringLiteral
 	ExprFunctionCall
 	ExprObject
+	ExprArrayDecl
+	ExprArrayIndex
+	ExprArrayIndexAssignment
 	ExprDotAccess
 	ExprParenthesized
 	SentinelValueExpression

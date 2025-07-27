@@ -12,6 +12,11 @@ func (p *Program) RunExpression(expr gg_ast.Expression) error {
 		return nil
 	}
 	switch expr.(type) {
+	case *gg_ast.ArrayIndexAssignmentExpression:
+		expr := expr.(*gg_ast.ArrayIndexAssignmentExpression)
+		if err := p.evaluateArrayIndexAssignmentExpression(expr); err != nil {
+			return err
+		}
 	case *gg_ast.TryCatchExpression:
 		expr := expr.(*gg_ast.TryCatchExpression)
 		if err := p.evaluateTryCatchExpression(expr); err != nil {

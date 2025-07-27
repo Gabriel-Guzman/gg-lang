@@ -75,6 +75,10 @@ func (p *Parser[T]) Index() int {
 
 func (p *Parser[T]) Advance() {
 	p.curr++
+	p.assignPublicProps()
+}
+
+func (p *Parser[T]) assignPublicProps() {
 	p.HasCurr = p.curr < len(p.items) && p.curr >= 0
 	p.HasNext = p.curr+1 < len(p.items) && p.curr+1 >= 0
 	if p.HasCurr {
@@ -82,6 +86,13 @@ func (p *Parser[T]) Advance() {
 	}
 	if p.HasNext {
 		p.Next = p.items[p.curr+1]
+	}
+}
+
+func (p *Parser[T]) Back() {
+	if p.curr > 0 {
+		p.curr--
+		p.assignPublicProps()
 	}
 }
 

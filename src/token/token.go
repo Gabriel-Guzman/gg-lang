@@ -46,6 +46,10 @@ func tokenize(par *parser.Parser[rune]) ([]Token, error) {
 			a(tk.parseReservedSingleRuneTok(OpenParen))
 		case isRuneReserved(tk.Par.Curr, CloseParen):
 			a(tk.parseReservedSingleRuneTok(CloseParen))
+		case isRuneReserved(tk.Par.Curr, OpenBracket):
+			a(tk.parseReservedSingleRuneTok(OpenBracket))
+		case isRuneReserved(tk.Par.Curr, CloseBracket):
+			a(tk.parseReservedSingleRuneTok(CloseBracket))
 		case uni.IsDigit(par.Curr):
 			numTok, err := parseNumLiteral(par)
 			if err != nil {
